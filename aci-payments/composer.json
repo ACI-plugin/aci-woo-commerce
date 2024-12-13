@@ -1,0 +1,9 @@
+{
+    "name": "tryzens/aci",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Aci\\": "aci/packages/Aci"
+        }
+    }
+}

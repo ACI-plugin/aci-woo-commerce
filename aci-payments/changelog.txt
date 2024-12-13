@@ -1,0 +1,10 @@
+*** ACI Payments Changelog ***
+
+2024-09-7 - version 1.0.1
+* Added - Admin configurations and webhooks
+* Added - Card payments
+* Added - klarna payments
+* Added - Apple pay
+* Added - Google pay
+* Added - Paypal payments
+* Fixed - Important bug fix
