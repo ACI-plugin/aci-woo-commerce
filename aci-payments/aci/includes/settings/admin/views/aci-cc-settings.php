@@ -30,7 +30,7 @@ $form_fields = array(
 		'type'    => 'select',
 		'default' => 'authorize',
 		'options' => array(
-			'authorize' => __( 'Auth', 'woocommerce' ),
+			'authorize' => __( 'Authorization', 'woocommerce' ),
 			'capture'   => __( 'Sale', 'woocommerce' ),
 		),
 	),

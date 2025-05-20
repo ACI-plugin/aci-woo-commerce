@@ -37,18 +37,27 @@
 				this.unload_widget();
 				this.checkout_id = data.id;
 				$( `.payment_box.payment_method_${ woo_aci_cc_obj.id }` ).html( '' );
-				this.load_aci_script( `.payment_box.payment_method_${ woo_aci_cc_obj.id }`, woo_aci_cc_obj.end_point, data.id );
+				this.load_aci_script( `.payment_box.payment_method_${ woo_aci_cc_obj.id }`, woo_aci_cc_obj.end_point, data.id, data.integrity );
 				this.load_aci_from( `.payment_box.payment_method_${ woo_aci_cc_obj.id }`, woo_aci_cc_obj.shopper_result_url, woo_aci_cc_obj.supported_card_brands );
-				window.wpwlOptions.style = 'card';
+				
+				window.wpwlOptions = window.wpwlOptions || {};
 				window.wpwlOptions.registrations = Object.assign( {}, window.wpwlOptions.registrations, { requireCvv: true } );
-				window.wpwlOptions.onReady = function ( e ) {
-					if ( woo_aci_cc_obj.show_saved_card_option === '1' ) {
-						const createRegistrationHtml = '<div id ="saved_cards_option"><div class="customLabel">' + wp.i18n.__( 'Save card', 'woocommerce' ) + '</div><div class="customInput"><input type="checkbox" name="createRegistration" value="true" /></div></div>';
-						$( 'form.wpwl-form-card' ).find( '#saved_cards_option' ).remove();
-						$( 'form.wpwl-form-card' ).find( '.wpwl-button' ).before( createRegistrationHtml );
+
+				const existingOnReady = window.wpwlOptions.onReady || function() {};
+				window.wpwlOptions.onReady = function (e) {
+
+					existingOnReady.call(this, e);
+					
+					if (woo_aci_cc_obj.show_saved_card_option === '1') {
+						const createRegistrationHtml = '<div id="saved_cards_option"><div class="customLabel">' + wp.i18n.__('Save card', 'woocommerce') + '</div><div class="customInput"><input type="checkbox" name="createRegistration" value="true" /></div></div>';
+						$('form.wpwl-form-card').find('#saved_cards_option').remove();
+						$('form.wpwl-form-card').find('.wpwl-button').before(createRegistrationHtml);
 					}
 				};
+				
 				this.init_wpwl_events( `.payment_box.payment_method_${ woo_aci_cc_obj.id }` );
+
+
 			} else {
 				this.error_handler( wp.i18n.__( 'We are currently unable to process your payment. Please try again', 'woocommerce' ) );
 			}

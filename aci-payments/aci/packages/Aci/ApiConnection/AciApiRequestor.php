@@ -59,12 +59,13 @@ class AciApiRequestor extends ApiRequestor {
 		$curl    = curl_init();
 		$headers = $this->get_http_header( $settings );
 		$param   = '';
+		$additional_params = $this->add_additional_params();
 		if ( $args ) {
-			$param = ( ! empty( $this->add_additional_params() )
-			? ( $args . '&' . http_build_query( $this->add_additional_params() ) )
+			$param = ( ! empty( $additional_params )
+			? ( $args . '&' . http_build_query( $additional_params ) )
 			: $args );
 		}
-		$args = is_array( $args ) ? wp_json_encode( array_merge( $this->add_additional_params(), $args ) ) : $param;
+		$args = is_array( $args ) ? wp_json_encode( array_merge( $additional_params, $args ) ) : $param;
 
 		$curl_params = array(
 			CURLOPT_URL            => $this->api_url . $endpoint,
@@ -98,7 +99,7 @@ class AciApiRequestor extends ApiRequestor {
 	 * Function to add additional parameters to the request
 	 */
 	public function add_additional_params() {
-		return array();
+		return array( 'pluginType' => 'WOOCOM' );
 	}
 
 	/**

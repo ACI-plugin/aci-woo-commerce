@@ -8,3 +8,8 @@
 * Added - Google pay
 * Added - Paypal payments
 * Fixed - Important bug fix
+2025-03-28 - version 1.1.0
+* Added - Fast Checkout Apple Pay
+* Added - Fast Checkout Google Pay
+* Fixed - The issue where the wpwlOptions JS from the admin configuration was overwritten by the plugin code
+* Added - Addition of new OPP Parameter pluginType

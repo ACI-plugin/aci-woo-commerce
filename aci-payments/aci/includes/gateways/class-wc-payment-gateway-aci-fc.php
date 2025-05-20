@@ -1,6 +1,6 @@
 <?php
 /**
- * File for Aci Credit Card implementation
+ * File for Aci Fast Checkout implementation
  *
  * @package aci
  */
@@ -10,12 +10,13 @@ defined( 'ABSPATH' ) || exit();
 use Automattic\WooCommerce\StoreApi\Utilities\DraftOrderTrait;
 
 /**
- * Class for Aci Gateway Credit Card
+ * Class for Aci Gateway Fast Checkout
  */
-class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
+class WC_Payment_Gateway_Aci_FC extends WC_Payment_Gateway_Ignite_FC {
 	use WC_Aci_Settings_Trait;
 	use DraftOrderTrait;
 	use WC_Aci_Initialize_Trait;
+	use WC_Aci_Fc_Trait;
 
 	/**
 	 * Logger instance for logging activities.
@@ -32,20 +33,58 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 	private $context;
 
 	/**
-	 * WC_Payment_Gateway_Aci_CC constructor
+	 * WC_Payment_Gateway_Aci_FC constructor
 	 */
 	public function __construct() {
-		$this->id           = 'woo_aci_cc';
-		$this->method_title = __( 'Card Settings', 'woocommerce' );
-		add_action( 'wp_enqueue_scripts', array( $this, 'woo_aci_cc_payment_scripts' ) );
-		add_action( 'woocommerce_api_' . $this->id, array( $this, 'handle_aci_cc_api_request' ) );
-		$this->supports = array(
-			'refunds',
-			'tokenization',
-		);
-		$this->logger   = wc_get_logger();
-		$this->context  = array( 'source' => 'Aci-CC-logger' );
 		parent::__construct();
+		$this->id           = 'woo_aci_fc';
+		$this->method_title = __( 'ACI Fast Checkout Settings', 'woocommerce' );
+		$this->supports     = array(
+			'refunds',
+		);
+		$this->logger       = wc_get_logger();
+		$this->context      = array( 'source' => 'Aci-FC-logger' );
+		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+		add_action( 'woocommerce_update_options_checkout_' . $this->id, array( $this, 'process_admin_options' ) );
+		add_action( 'woocommerce_api_' . $this->id, array( $this, 'handle_aci_cc_api_request' ) );
+		$this->title = __( 'Fast Checkout', 'woocommerce' );
+		$this->init_form_fields();
+		$this->init_settings();
+	}
+
+	/**
+	 * Added override to provide more control on which fields are saved and which are skipped.
+	 * This plugin
+	 * has custom setting fields like "paragraph" that are for info display only and not for saving.
+	 *
+	 * {@inheritDoc}
+	 *
+	 * @see WC_Settings_API::process_admin_options()
+	 */
+	public function process_admin_options() {
+		$this->init_settings();
+
+		$post_data = $this->get_post_data();
+
+		$skip_types = array( 'title', 'paragraph', 'button', 'description', 'button_demo', 'ignite_button' );
+
+		foreach ( $this->get_form_fields() as $key => $field ) {
+			$skip = isset( $field['skip'] ) && true === $field['skip'];
+			if ( ! in_array( $this->get_field_type( $field ), $skip_types, true ) && ! $skip ) {
+				try {
+					$this->settings[ $key ] = $this->get_field_value( $key, $field, $post_data );
+				} catch ( Exception $e ) {
+					$this->add_error( $e->getMessage() );
+				}
+			}
+		}
+		/**
+		 * Hook to update the option in the WordPress database.
+		 *
+		 * @return bool
+		 * @since 1.0.0
+		 */
+		return update_option( $this->get_option_key(), apply_filters( 'woocommerce_settings_api_sanitized_fields_' . $this->id, $this->settings ), 'yes' );
 	}
 
 	/**
@@ -54,8 +93,9 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 	 * @throws Exception If the payment process fails.
 	 */
 	public function handle_aci_cc_api_request() {
+
 		global $wp;
-		$redirect_url = wc_get_checkout_url();
+		$redirect_url = wc_get_cart_url();
 		$is_admin     = wc_clean( wp_unslash( $_GET['is_admin'] ?? '' ) ); // phpcs:ignore
 		$order        = $this->get_draft_order();
 		if ( empty( $order ) ) {
@@ -81,16 +121,7 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 					$result_code   = $psp_response['result']['code'];
 					$response_code = $this->validate_response( $result_code );
 				}
-				$save_card_detail = $this->get_save_card_option();
-				if ( $save_card_detail ) {
-					$token_array = array();
-					foreach ( $this->get_tokens() as $token ) {
-						$token_array[ $token->get_id() ] = $token->get_token();
-					}
-					if ( isset( $psp_response['registrationId'] ) && ! in_array( $psp_response['registrationId'], $token_array, true ) ) {
-						$this->save_card_details( $psp_response );
-					}
-				}
+				$brand = $order->get_meta( 'aci_payment_id' );
 				$this->logger->info( 'Transaction service response for the order #' . $order->get_id() . ' : ' . wc_print_r( $psp_response, true ), $this->context );
 				if ( 'SUCCESS' === $response_code ) {
 					if ( 'PA' === $psp_response['paymentType'] ) {
@@ -98,12 +129,12 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 						$success = $order->update_status( 'on-hold' );
 						$order->set_payment_method( $this->id );
 						// Translators: %s is the gateway title.
-						$order->add_order_note( sprintf( __( 'Payment Authorized using %s', 'woocommerce' ), $this->title ), false, true );
+						$order->add_order_note( sprintf( __( 'Payment Authorized using %s', 'woocommerce' ), $brand ), false, true );
 						$order->save();
 					} else {
 						$order->set_payment_method( $this->id );
 						// Translators: %s is the gateway title.
-						$order->add_order_note( sprintf( __( 'Payment Captured using %s', 'woocommerce' ), $this->title ), false, true );
+						$order->add_order_note( sprintf( __( 'Payment Captured using %s', 'woocommerce' ), $brand ), false, true );
 						$success = $order->payment_complete( $psp_response['id'] );
 					}
 					$this->subscription_service_call( $order, $psp_response, $this->gateway );
@@ -113,7 +144,7 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 					$success = $order->update_status( 'pending' );
 					$order->set_transaction_id( $psp_response['id'] );
 					// Translators: %s is the gateway title.
-					$order->add_order_note( sprintf( __( 'Payment Pending - %s', 'woocommerce' ), $payment_brand ), false, true );
+					$order->add_order_note( sprintf( __( 'Payment Pending - %s', 'woocommerce' ), $brand ), false, true );
 					$order->save();
 					/**
 					 * Fired after setting pending status
@@ -143,48 +174,32 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 			exit;
 		}
 	}
-
 	/**
 	 * Callback method for wp_enqueue_scripts action
 	 */
-	public function woo_aci_cc_payment_scripts() {
-		if ( is_checkout() && $this->is_available() ) {
+	public function woo_ignite_fc_payment_scripts() {
+		if ( ! is_checkout() && ! is_admin() && $this->is_available() ) {
 			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-			wp_enqueue_script( $this->id . '_checkout', WC_ACI_ASSETS . 'js/frontend/woo-aci-cc-checkout' . $suffix . '.js', array( 'woo_aci_common' ), WC_ACI_VERSION, false );
+			wp_enqueue_script( $this->id . '_checkout', WC_ACI_ASSETS . 'js/frontend/woo-aci-fc-checkout' . $suffix . '.js', array(), WC_ACI_VERSION, false );
 			global $wp;
-			$order_id           = '0';
-			$shopper_result_url = WC()->api_request_url( $this->id );
-			if ( is_wc_endpoint_url( 'order-pay' ) ) {
-				$order_id           = absint( $wp->query_vars['order-pay'] );
-				$shopper_result_url = add_query_arg( array( 'is_admin' => 1 ), $shopper_result_url );
-			}
-			$show_saved_card_option = $this->get_save_card_option();
+			$fc_params = $this->get_fc_params();
 			wp_localize_script(
 				$this->id . '_checkout',
 				$this->id . '_obj',
-				array(
-					'ajax_url'                => admin_url( 'admin-ajax.php' ),
-					'nonce'                   => wp_create_nonce( 'woo_aci_ajax_request' ),
-					'id'                      => $this->id,
-					'action'                  => 'woo_aci_ajax_request',
-					'admin_checkout_order_id' => $order_id,
-					'show_saved_card_option'  => $show_saved_card_option,
-					'shopper_result_url'      => $shopper_result_url,
-					'supported_card_brands'   => str_replace( ',', ' ', $this->get_option( 'supported_card_brands' ) ),
-					'end_point'               => $this->get_api_url(),
-					'custom_js_code'          => '(function($) {' . $this->get_aci_javascript() . '})(jQuery);',
-				)
+				$fc_params
 			);
 			wp_set_script_translations( $this->id . '_checkout', 'woocommerce' );
 		}
 	}
+
+
 
 	/**
 	 * Initialise Gateway Settings form fields.
 	 */
 	public function init_form_fields() {
 		if ( is_admin() ) {
-			$this->form_fields = require WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/views/aci-cc-settings.php';
+			$this->form_fields = require WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/views/aci-fc-settings.php';
 		}
 	}
 
@@ -195,43 +210,9 @@ class WC_Payment_Gateway_Aci_CC extends WC_Payment_Gateway_Ignite {
 	}
 
 	/**
-	 * Stores card details to DB.
-	 *
-	 * @param array $response card data.
+	 * Method to check apm
 	 */
-	public function save_card_details( $response ) {
-		if ( ! $response ) {
-			return false;
-		}
-
-		$request_token = is_array( $response )
-		&& isset( $response['registrationId'] )
-		&& ! isset( $response['recurringType'] );
-
-		if ( $request_token ) {
-			$token_information = $response['card'] ?? null;
-			$expiry_month      = ( $token_information['expiryMonth'] ) ? $token_information['expiryMonth'] . '/' : '';
-			$expiry_year       = $token_information['expiryYear'] ?? '';
-			$expiry_date       = $expiry_month . $expiry_year;
-
-			/**
-			 * 'wc_aci_cc_token_class' - filter used to override aci cc token class
-			 *
-			 * @param string aci cc token class name
-			 *
-			 * @since 1.0.1
-			 */
-			$class_name = apply_filters( 'wc_aci_cc_token_class', WC_Payment_Token_Aci_CC::class );
-			$token_obj  = new $class_name();
-			$token_obj->set_type( 'Aci_CC' );
-			$token_obj->set_gateway_id( $this->id );
-			$token_obj->set_expires( $expiry_date ?? '' );
-			$token_obj->set_brand( $response['paymentBrand'] ?? '' );
-			$token_obj->set_card_holder_name( $token_information['holder'] ?? '' );
-			$token_obj->set_card_masked_number( $token_information['last4Digits'] ?? '' );
-			$token_obj->set_token( $response['registrationId'] ?? '' );
-			$token_obj->set_user_id( get_current_user_id() );
-			$token_obj->save();
-		}
+	public function is_fastcheckout() {
+		return true;
 	}
 }

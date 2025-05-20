@@ -18,12 +18,15 @@
 				if ( this.src.indexOf( 'static.min.js' ) !== -1 ) {
 					$( this ).remove();
 				}
+				if ( this.src.indexOf( 'paymentWidgets.js' ) !== -1 ) {
+					$( this ).remove();
+				}
 			} );
 		}
 	};
 
-	aci.Gateway.prototype.load_aci_script = function ( div_id, endpoint, checkout_id ) {
-		$( div_id ).append( `<script src="${ endpoint }/v1/paymentWidgets.js?checkoutId=${ checkout_id }"></script>` );
+	aci.Gateway.prototype.load_aci_script = function ( div_id, endpoint, checkout_id, integrity ) {
+		$( div_id ).append( `<script src="${ endpoint }/v1/paymentWidgets.js?checkoutId=${ checkout_id }" integrity="${ integrity }" crossorigin="anonymous" ></script>` );
 	};
 
 	aci.Gateway.prototype.load_aci_from = function ( div_id, action, payment_method_code ) {
@@ -123,13 +126,30 @@
 	};
 
 	aci.Gateway.prototype.init_wpwl_events = function ( document_id ) {
-		window.wpwlOptions.onBeforeSubmitCard = function ( e ) {
-			return this.on_click_pay_now_event_handler( e );
-		}.bind( this );
+		const existingOnBeforeSubmitCard = typeof window.wpwlOptions.onBeforeSubmitCard === 'function' ? window.wpwlOptions.onBeforeSubmitCard : null;
 
-		window.wpwlOptions.onBeforeSubmitOneClickCard = function ( e ) {
-			return this.on_click_pay_now_event_handler( e );
-		}.bind( this );
+		window.wpwlOptions.onBeforeSubmitCard = function(e) {
+			if (existingOnBeforeSubmitCard) {
+				const result = existingOnBeforeSubmitCard.call(this, e);
+				if (result === false) {
+					return false; 
+				}
+			}
+			return this.on_click_pay_now_event_handler(e);
+		}.bind(this);
+
+		const existingOnBeforeSubmitOneClickCard = typeof window.wpwlOptions.onBeforeSubmitOneClickCard === 'function' ? window.wpwlOptions.onBeforeSubmitOneClickCard : null;
+		window.wpwlOptions.onBeforeSubmitOneClickCard = function(e) {
+
+			if (existingOnBeforeSubmitOneClickCard) {
+				const result = existingOnBeforeSubmitOneClickCard.call(this, e);
+				if (result === false) {
+					return false;
+				}
+			}
+			
+			return this.on_click_pay_now_event_handler(e);
+		}.bind(this);
 
 		$( document_id )
 			.off( 'click' )

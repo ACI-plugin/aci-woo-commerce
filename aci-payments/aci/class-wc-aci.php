@@ -12,6 +12,8 @@ use Aci\Service\RefundService;
 use Aci\Client\AciClient;
 use Aci\Service\TransactionService;
 use Aci\Service\SubscriptionService;
+use Aci\Service\GetCryptoHashService;
+use Aci\Service\UpdateCheckoutService;
 
 defined( 'ABSPATH' ) || exit();
 
@@ -60,6 +62,43 @@ class WC_Aci {
 		register_activation_hook( WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', array( $this, 'woo_aci_install_dependencies' ) );
 		add_action( 'upgrader_process_complete', array( $this, 'woo_aci_rename_dependencies_folder' ), 10, 2 );
 		register_deactivation_hook( WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', array( $this, 'woo_aci_deactivation_dependencies' ) );
+		add_action( 'woocommerce_proceed_to_checkout', array( $this, 'add_fc_button' ) );
+		add_action( 'wp_head', array( $this, 'add_inline_styles_to_head' ) );
+		add_filter( 'ignite_enable_add_payment_method', array( $this, 'access_payment_in_accountpage' ) );
+		add_filter( 'woocommerce_account_menu_items', array( $this, 'hide_payment_method_menu' ) );
+	}
+
+	/**
+	 * Callback method for wp_head action
+	 */
+	public function add_inline_styles_to_head() {
+		$aci_css = '';
+		if ( $this->get_gateway() ) {
+			$aci_css = $this->get_gateway()->get_aci_css();
+		}
+		$inline_styles = '
+			.fc-miniart {
+				display: flex;
+				flex-direction: column;
+			}
+		' . $aci_css;
+		echo "<style>{$inline_styles}</style>";
+	}
+
+	/**
+	 * Callback method for woocommerce_cart_totals_after_order_total action
+	 */
+	public function add_fc_button() {
+		$available_gateways = WC()->payment_gateways()->get_available_payment_gateways();
+		if ( isset( $available_gateways['woo_aci_fc'] ) ) {
+			$fc_gateway = $available_gateways['woo_aci_fc'];
+			$params     = array(
+				'gpay_enabled'       => $fc_gateway->get_fc_gpay_enabled(),
+				'applepay_enabled'   => $fc_gateway->get_fc_applepay_enabled(),
+				'shopper_result_url' => WC()->api_request_url( 'woo_aci_fc' ),
+			);
+			wc_get_template( 'display-fc-buttons.php', $params, '', WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/fc/views/' );
+		}
 	}
 
 	/**
@@ -68,17 +107,31 @@ class WC_Aci {
 	public function woo_aci_ajax_request() {
 		check_ajax_referer( 'woo_aci_ajax_request', 'nonce' );
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-ajax-draft-order.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-ajax-aci-fc-draft-order.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-ajax-aci-fc.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-ajax-aci-cc.php';
 		$ajax_class_map = array(
-			'woo_aci_draft' => WC_Ajax_Draft_Order::class,
-			'woo_aci_cc'    => WC_Ajax_Aci_CC::class,
-			'woo_aci_apm'   => WC_Ajax_Aci_CC::class,
+			'woo_aci_draft'           => WC_Ajax_Draft_Order::class,
+			'woo_aci_fc'              => WC_Ajax_Aci_FC_Draft_Order::class,
+			'woo_aci_cc'              => WC_Ajax_Aci_CC::class,
+			'woo_aci_apm'             => WC_Ajax_Aci_CC::class,
+			'woo_aci_fc_cart'         => WC_Ajax_Aci_FC::class,
+			'woo_aci_fc_cart_update'  => WC_Ajax_Aci_FC::class,
+			'woo_aci_fc_order_update' => WC_Ajax_Aci_FC_Draft_Order::class,
 		);
 		$gateway_id     = wc_get_post_data_by_key( 'id' );
 		if ( '' !== $gateway_id ) {
 			$ajax_object = new $ajax_class_map[ $gateway_id ]();
 			if ( 'woo_aci_draft' === $gateway_id ) {
 				$ajax_object->create_draft_order_or_update_order();
+			} elseif ( 'woo_aci_fc_cart' === $gateway_id ) {
+				$ajax_object->retrieve_cart_object();
+			} elseif ( 'woo_aci_fc_cart_update' === $gateway_id ) {
+				$ajax_object->update_cart_object();
+			} elseif ( 'woo_aci_fc' === $gateway_id ) {
+				$ajax_object->create_fc_draft_order_or_update_order();
+			} elseif ( 'woo_aci_fc_order_update' === $gateway_id ) {
+				$ajax_object->update_order();
 			} else {
 				$ajax_object->initialize();
 			}
@@ -95,10 +148,12 @@ class WC_Aci {
 	public function wc_aci_payment_gateways( $gateways ) {
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/traits/wc-aci-settings-trait.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/traits/wc-aci-initialize-trait.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/traits/wc-aci-fc-trait.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/class-wc-payment-gateway-aci-cc.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/class-wc-payment-gateway-aci-fc.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/class-wc-payment-gateway-aci-apm.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/payment-tokens/class-wc-payment-token-aci-cc.php';
-		$gateways = array( WC_Payment_Gateway_Aci_CC::class, WC_Payment_Gateway_Aci_APM::class );
+		$gateways = array( WC_Payment_Gateway_Aci_CC::class, WC_Payment_Gateway_Aci_APM::class, WC_Payment_Gateway_Aci_FC::class );
 		return $gateways;
 	}
 
@@ -123,12 +178,15 @@ class WC_Aci {
 	 * @return array
 	 */
 	public function wc_aci_override_service( $class_map ) {
-		$class_map['initialize']   = InitializeService::class;
-		$class_map['capture']      = CaptureService::class;
-		$class_map['void']         = VoidService::class;
-		$class_map['refund']       = RefundService::class;
-		$class_map['transaction']  = TransactionService::class;
-		$class_map['subscription'] = SubscriptionService::class;
+		$class_map['initialize']     = InitializeService::class;
+		$class_map['capture']        = CaptureService::class;
+		$class_map['void']           = VoidService::class;
+		$class_map['refund']         = RefundService::class;
+		$class_map['transaction']    = TransactionService::class;
+		$class_map['subscription']   = SubscriptionService::class;
+		$class_map['cryptohash']     = GetCryptoHashService::class;
+		$class_map['updatecheckout'] = UpdateCheckoutService::class;
+
 		return $class_map;
 	}
 
@@ -194,6 +252,10 @@ class WC_Aci {
 			return $gateways;
 		}
 
+		if ( is_checkout() && isset( $gateways['woo_aci_fc'] ) ) {
+			unset( $gateways['woo_aci_fc'] );
+		}
+
 		$apm = array();
 		foreach ( $gateways as $gateway ) {
 			if ( 'woo_aci_apm' === $gateway->id ) {
@@ -237,16 +299,17 @@ class WC_Aci {
 				$aci_javascript = $this->get_gateway()->get_aci_javascript();
 			}
 			if ( $aci_javascript ) {
-				wp_add_inline_script( 'woocommerce', $aci_javascript, 'after' );
+				wp_add_inline_script( 'woocommerce', '(function($) {' . $aci_javascript . '})(jQuery);', 'after' );
 			} else {
 				wp_add_inline_script( 'woocommerce', 'window.wpwlOptions={};', 'after' );
 			}
-			if ( $this->get_gateway() ) {
-				$aci_css = $this->get_gateway()->get_aci_css();
-			}
-			if ( $aci_css ) {
-				wp_add_inline_style( 'woocommerce-general', $aci_css );
-			}
+		}
+		$aci_css = '';
+		if ( $this->get_gateway() ) {
+			$aci_css = $this->get_gateway()->get_aci_css();
+		}
+		if ( $aci_css ) {
+			wp_add_inline_style( 'woocommerce-general', $aci_css );
 		}
 	}
 
@@ -270,7 +333,7 @@ class WC_Aci {
 	public function woo_aci_install_dependencies() {
 		$skin     = new WP_Ajax_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
-		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.0.1.zip' );
+		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.2.1.zip' );
 		if ( $package && ! is_wp_error( $package ) ) {
 			$plugin_to_activate = 'tryzens-ignite/tryzens-ignite.php';
 			if ( ! is_plugin_active( $plugin_to_activate ) ) {
@@ -316,5 +379,26 @@ class WC_Aci {
 		if ( file_exists( WP_PLUGIN_DIR . '/' . $plugin_to_remove ) ) {
 			delete_plugins( array( $plugin_to_remove ) );
 		}
+	}
+
+	/**
+	 * Callback function for 'ignite_enable_add_payment_method' to access payment methods  in My Account page
+	 */
+	public function access_payment_in_accountpage() {
+		return true;
+	}
+
+	/**
+	 * Callback function for 'woocommerce_account_menu_items' to hide the payment method menu in My Account page
+	 *
+	 * @param array $menu_items menu items.
+	 *
+	 * @return array
+	 */
+	public function hide_payment_method_menu( $menu_items ) {
+		if ( isset( $menu_items['payment-methods'] ) ) {
+			unset( $menu_items['payment-methods'] );
+		}
+		return $menu_items;
 	}
 }

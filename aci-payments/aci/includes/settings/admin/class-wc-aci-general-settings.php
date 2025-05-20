@@ -44,4 +44,17 @@ class WC_ACI_General_Settings extends WC_Ignite_API_Settings {
 			$this->form_fields = require WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/views/aci-general-settings.php';
 		}
 	}
+
+	/**
+	 * Validate Textarea Field.
+	 *
+	 * @since 9.0.0 No longer allows storing IFRAME, which was allowed for "ShareThis" integration no longer found in core.
+	 * @param  string $key Field key.
+	 * @param  string $value Posted Value.
+	 * @return string
+	 */
+	public function validate_textarea_field( $key, $value ) {
+		$value = is_null( $value ) ? '' : $value;
+		return ( 'javascript' === $key ) ? trim( stripslashes( $value ) ) : wp_kses_post( trim( stripslashes( $value ) ) );
+	}
 }

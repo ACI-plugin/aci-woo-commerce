@@ -173,6 +173,7 @@ class WC_Payment_Gateway_Aci_APM extends WC_Payment_Gateway_Ignite {
 					'admin_checkout_order_id' => $order_id,
 					'shopper_result_url'      => $shopper_result_url,
 					'end_point'               => $this->get_api_url(),
+					'custom_js_code'          => '(function($) {' . $this->get_aci_javascript() . '})(jQuery);',
 				)
 			);
 			wp_set_script_translations( 'woo_aci_apm_checkout', 'woocommerce' );

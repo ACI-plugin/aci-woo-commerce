@@ -940,4 +940,32 @@ trait WC_Aci_Settings_Trait {
 			do_action( 'wc_aci_after_subscription_service_call', $order, $psp_response );
 		}
 	}
+
+	/**
+	 * Function to get the FC googlpay enabled
+	 */
+	public function get_fc_gpay_enabled() {
+		return isset( $this->get_api_setting()['googlepay_fc_enabled'] ) ? ( ( 'Y' === $this->get_api_setting()['googlepay_fc_enabled'] ) ? true : false ) : false;
+	}
+
+	/**
+	 * Function to get the FC applepay enabled
+	 */
+	public function get_fc_applepay_enabled() {
+		return isset( $this->get_api_setting()['applepay_fc_enabled'] ) ? ( ( 'Y' === $this->get_api_setting()['applepay_fc_enabled'] ) ? true : false ) : false;
+	}
+
+	/**
+	 * Function to get the FC applepay chargetype
+	 */
+	public function get_fc_applepay_charge_type() {
+		return $this->get_api_setting()['applepay_charge_type'] ?? '';
+	}
+
+	/**
+	 * Function to get the FC googlepay chargetype
+	 */
+	public function get_fc_googlepay_charge_type() {
+		return $this->get_api_setting()['googlepay_charge_type'] ?? '';
+	}
 }

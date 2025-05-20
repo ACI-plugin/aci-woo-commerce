@@ -130,6 +130,12 @@ $form_fields = array(
 		'custom_attributes' => array(
 			'maxlength' => '100000',
 		),
+		'default'           => '.wpwl-apple-pay-button {
+  width: 100%;
+  display: inline-block;
+  -webkit-appearance: -apple-pay-button;
+padding: 18px 0px;
+}',
 	),
 );
 return $form_fields;

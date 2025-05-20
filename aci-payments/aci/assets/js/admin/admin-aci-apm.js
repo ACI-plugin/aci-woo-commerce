@@ -135,7 +135,7 @@
 						<fieldset>
 							<legend class="screen-reader-text"><span>${ wp.i18n.__( 'Charge Type', 'woocommerce' ) }</span></legend>
 							<select class="select" style="width: 100%;" name="${ id }[${ index }][payment_action]">
-								<option value="authorize" ${ data.payment_action === 'authorize' ? 'selected' : '' }>${ wp.i18n.__( 'Auth', 'woocommerce' ) }</option>
+								<option value="authorize" ${ data.payment_action === 'authorize' ? 'selected' : '' }>${ wp.i18n.__( 'Authorization', 'woocommerce' ) }</option>
 								<option value="capture" ${ data.payment_action === 'capture' ? 'selected' : '' }>${ wp.i18n.__( 'Sale', 'woocommerce' ) }</option>
 							</select>
 						</fieldset>
