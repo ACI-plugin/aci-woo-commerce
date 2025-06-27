@@ -1,0 +1,45 @@
+# WordPress core files
+/wp-admin/
+/wp-includes/
+
+# Plugin build artifacts
+*.log
+*.tmp
+*.cache
+*.bak
+*.swp
+*.swo
+*.zip
+
+# Node modules (if using JS tooling)
+node_modules/
+
+# Composer dependencies
+/vendor/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE/project files
+.vscode/
+.idea/
+*.code-workspace
+
+# Environment files
+.env
+.env.*
+
+# SFTP/FTP config files
+*.ftpconfig
+
+# PHPUnit test output
+phpunit.xml
+phpunit.xml.dist
+
+# WordPress uploads (if present in plugin)
+uploads/
+
+# Build/dist directories
+/dist/
+/build/

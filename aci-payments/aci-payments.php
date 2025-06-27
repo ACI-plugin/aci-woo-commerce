@@ -30,3 +30,11 @@ require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-direct.php';
 
 require_once WC_ACI_PLUGIN_FILE_PATH . 'vendor/autoload.php';
 require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/aci.php';
+
+// Include simple currency integration with raffle plugin (replaces complex version)
+require_once WC_ACI_PLUGIN_FILE_PATH . 'simple-aci-currency-override.php';
+
+// Include currency integration test (for debugging)
+if (defined('WP_DEBUG') && WP_DEBUG) {
+    require_once WC_ACI_PLUGIN_FILE_PATH . 'aci-currency-test.php';
+}
