@@ -13,3 +13,8 @@
 * Added - Fast Checkout Google Pay
 * Fixed - The issue where the wpwlOptions JS from the admin configuration was overwritten by the plugin code
 * Added - Addition of new OPP Parameter pluginType
+2025-06-30 - version 1.2.0
+* Added - Display and Deletion of Saved cards from profile
+* Added - ACI Logger settings (Debug and Error)
+* Fixed - Order updates email
+* Fixed - Customer information not passed during ACI initialization.

@@ -21,7 +21,12 @@ class WC_Aci_Rest_Controller extends WC_Ignite_Rest_Controller {
 	 * @return string $result
 	 */
 	public function decrypt_webhook_request( $iv_from_header, $auth_tag_from_header, $payload_from_header ) {
-		$logger                 = wc_get_logger();
+		$logger              = wc_get_aci_logger();
+		$webhook_info_logger = array(
+			'message' => 'Webhook received',
+			'method'  => 'WC_Aci_Rest_Controller::decrypt_webhook_request()',
+		);
+		$logger->debug( wp_json_encode( $webhook_info_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), array( 'source' => 'ACI-Webhook-Request' ) );
 		$json_payload           = json_decode( $payload_from_header, true );
 		$key_from_configuration = ( $this->get_gateway() ) ? $this->get_gateway()->get_aci_webhook_decryption_key() : false;
 		$key                    = hex2bin( $key_from_configuration );
@@ -29,8 +34,12 @@ class WC_Aci_Rest_Controller extends WC_Ignite_Rest_Controller {
 		$auth_tag               = hex2bin( $auth_tag_from_header );
 		$cipher_text            = hex2bin( $json_payload['encryptedBody'] );
 
-		$result = openssl_decrypt( $cipher_text, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $auth_tag );
-		$logger->info( wc_print_r( $result, true ), array( 'source' => 'ACI-Webhook-Request' ) );
+		$result                = openssl_decrypt( $cipher_text, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $auth_tag );
+		$webhook_result_logger = array(
+			'Webhook data' => $result,
+			'method'       => 'WC_Aci_Rest_Controller::decrypt_webhook_request()',
+		);
+		$logger->debug( wp_json_encode( $webhook_result_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), array( 'source' => 'ACI-Webhook-Request' ) );
 		return $result;
 	}
 
@@ -112,8 +121,18 @@ class WC_Aci_Rest_Controller extends WC_Ignite_Rest_Controller {
 				throw new Exception( 'Invalid request payload.' );
 			}
 		} catch ( Throwable $e ) {
-			$logger = wc_get_logger();
-			$logger->info( wc_print_r( $e, true ), array( 'source' => 'ACI-Webhook-Request' ) );
+			$logger       = wc_get_aci_logger();
+			$error_logger = array(
+				'error' => $e,
+			);
+			if ( $json_payload ) {
+				$error_logger['data'] = array(
+					'transaction_id'  => $json_payload['payload']['id'] ?? '',
+					'payment_method' => $json_payload['payload']['paymentBrand'] ?? '',
+				);
+			}
+			$logger->error( $error_logger, array( 'source' => 'ACI-Webhook-Request' ) );
+			wc_add_notice( __( 'Unable to update woo.', 'woocommerce' ), 'error' );
 			return new WP_Error();
 		}
 	}

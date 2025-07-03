@@ -74,7 +74,7 @@ class WC_Ajax_Aci_FC_Draft_Order extends WC_Checkout {
 			'status' => 'SUCCESS',
 			'result' => 'SUCCESS',
 		);
-		$logger   = wc_get_logger();
+		$logger   = wc_get_aci_logger();
 		$context  = array( 'source' => 'Aci-FC-Order-logger' );
 		try {
 			$shipping_address          = wc_get_post_data_by_key( 'shipping_address' );
@@ -159,7 +159,10 @@ class WC_Ajax_Aci_FC_Draft_Order extends WC_Checkout {
 				wp_send_json( $response );
 			}
 		} catch ( Throwable $e ) {
-			$logger->info( 'Exception : ' . wc_print_r( $e, true ), $context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$logger->error( $error_logger, $context );
 			wc_add_notice( __( 'We are currently unable to process your payment. Please try again', 'woocommerce' ), 'error' );
 			$response = array(
 				'error'      => true,

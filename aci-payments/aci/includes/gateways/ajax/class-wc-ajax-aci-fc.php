@@ -32,7 +32,7 @@ class WC_Ajax_Aci_FC {
 	 * WC_Admin_Action_Aci constructor
 	 */
 	public function __construct() {
-		$this->logger  = wc_get_logger();
+		$this->logger  = wc_get_aci_logger();
 		$this->context = array( 'source' => 'Aci-FC-Cart-logger' );
 	}
 
@@ -44,7 +44,10 @@ class WC_Ajax_Aci_FC {
 			$fc_params = $this->get_fc_params();
 			wp_send_json( $fc_params );
 		} catch ( Throwable $e ) {
-			$this->logger->info( 'Exception : ' . wc_print_r( $e, true ), $this->context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$this->logger->error( $error_logger, $this->context );
 			wp_send_json( '' );
 		}
 	}
@@ -101,7 +104,10 @@ class WC_Ajax_Aci_FC {
 			wc_clear_notices();
 			wp_send_json( $cart_updates );
 		} catch ( Throwable $e ) {
-			$this->logger->info( 'Exception : ' . wc_print_r( $e, true ), $this->context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$this->logger->error( $error_logger, $this->context );
 			if ( $e->getMessage() !== 'COUPON_ERROR' ) {
 				wc_clear_notices();
 				wc_add_notice( __( 'We are currently unable to process your request. Please try again', 'woocommerce' ), 'error' );

@@ -15,7 +15,7 @@ use Ignite\Service\AbstractService;
 class GetCryptoHashService extends AbstractService {
 
 	/**
-	 * retrieve the cryptographic hash service call
+	 * Retrieve the cryptographic hash service call
 	 *
 	 * @param array $params Data for Initialize Service call.
 	 *

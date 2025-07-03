@@ -42,7 +42,7 @@ class WC_Payment_Gateway_Aci_FC extends WC_Payment_Gateway_Ignite_FC {
 		$this->supports     = array(
 			'refunds',
 		);
-		$this->logger       = wc_get_logger();
+		$this->logger       = wc_get_aci_logger();
 		$this->context      = array( 'source' => 'Aci-FC-logger' );
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_update_options_checkout_' . $this->id, array( $this, 'process_admin_options' ) );
@@ -110,6 +110,12 @@ class WC_Payment_Gateway_Aci_FC extends WC_Payment_Gateway_Ignite_FC {
 				throw new Exception( 'Order ID or checkout id not found' );
 			}
 			if ( isset( $wp->query_vars['wc-api'] ) && $wp->query_vars['wc-api'] === $this->id ) {
+				$payment_logger = array(
+					'message'  => 'Started fc process payment',
+					'method'   => 'WC_Payment_Gateway_Aci_FC::handle_aci_fc_api_request()',
+					'order_id' => $order->get_id(),
+				);
+				$this->logger->debug( wp_json_encode( $payment_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), $this->context );
 				$resource_path  = isset( $_GET['resourcePath'] ) ? sanitize_text_field( wp_unslash( $_GET['resourcePath'] ) ) : ''; // phpcs:ignore
 				$params        = array(
 					'resource_path' => $resource_path . '?entityId=' . $this->get_aci_entity_id(),
@@ -121,21 +127,33 @@ class WC_Payment_Gateway_Aci_FC extends WC_Payment_Gateway_Ignite_FC {
 					$result_code   = $psp_response['result']['code'];
 					$response_code = $this->validate_response( $result_code );
 				}
-				$brand = $order->get_meta( 'aci_payment_id' );
-				$this->logger->info( 'Transaction service response for the order #' . $order->get_id() . ' : ' . wc_print_r( $psp_response, true ), $this->context );
+				$brand       = $order->get_meta( 'aci_payment_id' );
+				$prev_status = $order->get_status();
 				if ( 'SUCCESS' === $response_code ) {
 					if ( 'PA' === $psp_response['paymentType'] ) {
 						$order->set_transaction_id( $psp_response['id'] );
+						if ( 'checkout-draft' === $prev_status ) {
+							$this->track_next_status_email( $order->get_id(), 'on-hold' );
+						}
 						$success = $order->update_status( 'on-hold' );
 						$order->set_payment_method( $this->id );
 						// Translators: %s is the gateway title.
 						$order->add_order_note( sprintf( __( 'Payment Authorized using %s', 'woocommerce' ), $brand ), false, true );
 						$order->save();
+						if ( 'checkout-draft' === $prev_status ) {
+							$this->check_and_send_missing_email( $order->get_id(), 'on-hold' );
+						}
 					} else {
 						$order->set_payment_method( $this->id );
+						if ( 'checkout-draft' === $prev_status ) {
+							$this->track_next_status_email( $order->get_id(), 'processing' );
+						}
 						// Translators: %s is the gateway title.
 						$order->add_order_note( sprintf( __( 'Payment Captured using %s', 'woocommerce' ), $brand ), false, true );
 						$success = $order->payment_complete( $psp_response['id'] );
+						if ( 'checkout-draft' === $prev_status ) {
+							$this->check_and_send_missing_email( $order->get_id(), 'processing' );
+						}
 					}
 					$this->subscription_service_call( $order, $psp_response, $this->gateway );
 				} elseif ( 'PENDING' === $response_code ) {
@@ -153,22 +171,39 @@ class WC_Payment_Gateway_Aci_FC extends WC_Payment_Gateway_Ignite_FC {
 					 */
 					do_action( 'wc_aci_after_setting_pending_status', $order, $psp_response );
 				} else {
+					$this->track_next_status_email( $order->get_id(), 'failed' );
 					$order->update_status( 'failed' );
 					$order->save();
+					$this->check_and_send_missing_email( $order->get_id(), 'failed' );
 				}
 				if ( $success ) {
+					$payment_logger = array(
+						'message'  => 'Payment service call success',
+						'method'   => 'WC_Payment_Gateway_Aci_FC::handle_aci_fc_api_request()',
+						'order_id' => $order->get_id(),
+					);
+					$this->logger->debug( wp_json_encode( $payment_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), $this->context );
 					WC()->cart->empty_cart();
 					$this->set_draft_order_id( 0 );
 					wp_safe_redirect( $order->get_checkout_order_received_url() );
 					exit;
 				} else {
+					$payment_logger = array(
+						'message'  => 'Payment service call failed',
+						'method'   => 'WC_Payment_Gateway_Aci_FC::handle_aci_fc_api_request()',
+						'order_id' => $order->get_id(),
+					);
+					$this->logger->debug( wp_json_encode( $payment_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), $this->context );
 					throw new Exception( 'Transaction service failed' );
 				}
 			} else {
 				throw new Exception( 'Invalid call' );
 			}
 		} catch ( Throwable $e ) {
-			$this->logger->info( 'Exception : ' . wc_print_r( $e, true ), $this->context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$this->logger->error( $error_logger, $this->context );
 			wc_add_notice( __( 'We are currently unable to process your payment. Please try again', 'woocommerce' ), 'error' );
 			wp_safe_redirect( $redirect_url );
 			exit;

@@ -512,6 +512,13 @@ trait WC_Aci_Settings_Trait {
 	public $key_shipping_method = 'method';
 
 	/**
+	 * Define email expected
+	 *
+	 * @var array
+	 */
+	public $email_expected = array();
+
+	/**
 	 * Check Successful Response
 	 *
 	 * @param string $response_code - The response code to check.
@@ -594,7 +601,7 @@ trait WC_Aci_Settings_Trait {
 	 * @param  string     $reason Refund reason.
 	 */
 	public function process_refund( $order_id, $amount = null, $reason = '' ) { //phpcs:ignore
-		$logger  = wc_get_logger();
+		$logger  = wc_get_aci_logger();
 		$context = array( 'source' => 'Aci-refund-logger' );
 
 		$order = wc_get_order( $order_id );
@@ -623,7 +630,6 @@ trait WC_Aci_Settings_Trait {
 				}
 				$result       = $this->gateway->refund->create( $params );
 				$psp_response = json_decode( $result, true );
-				$logger->info( 'Refund Response for the order #' . $order_id . ': ' . wc_print_r( $psp_response, true ), $context );
 
 				if ( isset( $psp_response['result'] ) ) {
 					$result_code   = $psp_response['result']['code'];
@@ -898,7 +904,7 @@ trait WC_Aci_Settings_Trait {
 	 * @param object $gateway_obj gateway obj.
 	 */
 	public function subscription_service_call( $order, $psp_response, $gateway_obj ) {
-		$logger                          = wc_get_logger();
+		$logger                          = wc_get_aci_logger();
 		$context                         = array( 'source' => 'Aci-subcription-logger' );
 		$recurring_order_cron_expression = $order->get_meta( 'wc_aci_recurring_order' );
 		if ( empty( $recurring_order_cron_expression ) && ! empty( wc()->session ) ) {
@@ -927,9 +933,12 @@ trait WC_Aci_Settings_Trait {
 				$result_code   = $psp_response['result']['code'];
 				$response_code = $this->validate_response( $result_code );
 			}
-			$logger->info( 'Subscription service response for the order #' . $order->get_id() . ' : ' . wc_print_r( $psp_response, true ), $context );
 			if ( 'SUCCESS' !== $response_code ) {
-				$logger->info( 'Failed to create subscription', $context );
+				$service_info_logger = array(
+					'message' => 'Failed to create subscription',
+					'method'  => 'WC_Aci_Settings_Trait::subscription_service_call()',
+				);
+				$logger->debug( wp_json_encode( $service_info_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), $context );
 			}
 			wc()->session->set( 'wc_aci_recurring_order', null );
 			/**
@@ -967,5 +976,137 @@ trait WC_Aci_Settings_Trait {
 	 */
 	public function get_fc_googlepay_charge_type() {
 		return $this->get_api_setting()['googlepay_charge_type'] ?? '';
+	}
+
+	/**
+	 * Function to check the next email status.
+	 *
+	 * @param string|int $order_id Order ID.
+	 * @param string     $status Order Status.
+	 * @return void
+	 */
+	public function track_next_status_email( $order_id, $status ) {
+		$this->email_expected[ $order_id ][ $status ] = array(
+			'admin'    => false,
+			'customer' => false,
+		);
+
+		$logger  = wc_get_aci_logger();
+		$context = array( 'source' => 'Aci-email-logger' );
+
+		$hooks = array(
+			"woocommerce_order_status_{$status}_notification",
+			"woocommerce_order_status_failed_to_{$status}_notification",
+			"woocommerce_order_status_pending_to_{$status}_notification",
+			"woocommerce_order_status_on-hold_to_{$status}_notification",
+			"woocommerce_order_status_processing_to_{$status}_notification",
+			"woocommerce_order_status_cancelled_to_{$status}_notification",
+			"woocommerce_order_status_refunded_to_{$status}_notification",
+		);
+
+		foreach ( $hooks as $hook ) {
+			add_action(
+				$hook,
+				function ( $oid ) use ( $order_id, $status, $hook, $logger, $context ) {
+					if ( $oid === $order_id ) {
+						$logger->debug( "WooCommerce fired: {$hook} for order #{$order_id}", $context );
+					}
+				},
+				10,
+				1
+			);
+		}
+
+		// Admin + Customer recipient tracking for relevant statuses.
+		if ( in_array( $status, array( 'failed', 'processing', 'on-hold' ), true ) ) {
+			// Admin recipients.
+			$admin_email_hooks = array(
+				'failed'     => 'woocommerce_email_recipient_failed_order',
+				'processing' => 'woocommerce_email_recipient_new_order',
+				'on-hold'    => 'woocommerce_email_recipient_new_order',
+			);
+			add_filter(
+				$admin_email_hooks[ $status ],
+				function ( $recipient, $order ) use ( $order_id, $status, $logger, $context ) {
+					if ( $order->get_id() === $order_id ) {
+						$logger->debug( "Admin {$status} order recipient for order #{$order_id}: {$recipient}", $context );
+						$this->email_expected[ $order_id ][ $status ]['admin'] = true;
+					}
+					return $recipient;
+				},
+				10,
+				2
+			);
+
+			// Customer recipients.
+			$customer_email_hooks = array(
+				'failed'     => 'woocommerce_email_recipient_customer_failed_order',
+				'processing' => 'woocommerce_email_recipient_customer_processing_order',
+				'on-hold'    => 'woocommerce_email_recipient_customer_on_hold_order',
+			);
+			add_filter(
+				$customer_email_hooks[ $status ],
+				function ( $recipient, $order ) use ( $order_id, $status, $logger, $context ) {
+					if ( $order->get_id() === $order_id ) {
+						$logger->debug( "Customer {$status} order recipient for order #{$order_id}: {$recipient}", $context );
+						$this->email_expected[ $order_id ][ $status ]['customer'] = true;
+					}
+					return $recipient;
+				},
+				10,
+				2
+			);
+		}
+	}
+
+	/**
+	 * Function to check the status of order and send email
+	 *
+	 * @param string|int $order_id Order ID.
+	 * @param string     $status Order Status.
+	 * @return void
+	 */
+	public function check_and_send_missing_email( $order_id, $status ) {
+		add_action(
+			'shutdown',
+			function () use ( $order_id, $status ) {
+				$logger  = wc_get_aci_logger();
+				$context = array( 'source' => 'Aci-email-logger' );
+
+				$expected = $this->email_expected[ $order_id ][ $status ] ?? array();
+
+				if ( in_array( $status, array( 'failed', 'processing', 'on-hold' ), true ) ) {
+					if ( empty( $expected['admin'] ) ) {
+						$logger->debug( "Woo did not send admin {$status} email for order #{$order_id}. Sending manually.", $context );
+						switch ( $status ) {
+							case 'failed':
+								WC()->mailer()->emails['WC_Email_Failed_Order']->trigger( $order_id );
+								break;
+							case 'processing':
+							case 'on-hold':
+								WC()->mailer()->emails['WC_Email_New_Order']->trigger( $order_id );
+								break;
+						}
+					}
+					if ( empty( $expected['customer'] ) ) {
+						$logger->debug( "Woo did not send customer {$status} email for order #{$order_id}. Sending manually.", $context );
+						switch ( $status ) {
+							case 'failed':
+								WC()->mailer()->emails['WC_Email_Customer_Failed_Order']->trigger( $order_id );
+								break;
+							case 'processing':
+								WC()->mailer()->emails['WC_Email_Customer_Processing_Order']->trigger( $order_id );
+								break;
+							case 'on-hold':
+								WC()->mailer()->emails['WC_Email_Customer_On_Hold_Order']->trigger( $order_id );
+								break;
+						}
+					}
+				} else {
+					$logger->debug( "No manual email triggers defined for '{$status}' on order #{$order_id}", $context );
+				}
+			},
+			999
+		);
 	}
 }

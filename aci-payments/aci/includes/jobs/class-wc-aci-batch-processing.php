@@ -79,7 +79,7 @@ class WC_Aci_Batch_Processing extends WC_Ignite_Batch_Processing {
 	 * @throws Exception If the order is ivalid.
 	 */
 	protected function task( $request ) {
-		$logger       = wc_get_logger();
+		$logger       = wc_get_aci_logger();
 		$json_request = json_decode( $request, true );
 
 		$json_payload = $json_request['payload'];
@@ -104,13 +104,20 @@ class WC_Aci_Batch_Processing extends WC_Ignite_Batch_Processing {
 				}
 
 				if ( '' !== $new_status ) {
+					if ( 'checkout-draft' === $prev_order_status ) {
+						$this->track_next_status_email( $orders->get_id(), $new_status );
+					}
+					$orders->update_status( $new_status );
+					if ( 'checkout-draft' === $prev_order_status ) {
+						$this->check_and_send_missing_email( $orders->get_id(), $new_status );
+					}
+					
 					if ( 'processing' === $new_status || 'on-hold' === $new_status ) {
 						$gateways    = WC()->payment_gateways()->payment_gateways();
 						$gateway_id  = $orders->get_payment_method();
 						$gateway_obj = $gateways[ $gateway_id ];
 						$this->subscription_service_call( $orders, $json_payload, $gateway_obj->gateway );
 					}
-					$orders->update_status( $new_status );
 				}
 			}
 		} catch ( Exception $e ) {

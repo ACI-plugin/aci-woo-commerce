@@ -137,5 +137,28 @@ $form_fields = array(
 padding: 18px 0px;
 }',
 	),
+	'logger_settings'        => array(
+		'title' => __( 'Logger Settings', 'woocommerce' ),
+		'type'  => 'title',
+		'id'    => 'logger_settings',
+	),
+	'error_log_enabled'      => array(
+		'title'   => __( 'Error Logging', 'woocommerce' ),
+		'type'    => 'select',
+		'default' => 'N',
+		'options' => array(
+			'Y' => __( 'Enable', 'woocommerce' ),
+			'N' => __( 'Disable', 'woocommerce' ),
+		),
+	),
+	'debug_log_enabled'      => array(
+		'title'   => __( 'Debug Logging', 'woocommerce' ),
+		'type'    => 'select',
+		'default' => 'N',
+		'options' => array(
+			'Y' => __( 'Enable', 'woocommerce' ),
+			'N' => __( 'Disable', 'woocommerce' ),
+		),
+	),
 );
 return $form_fields;

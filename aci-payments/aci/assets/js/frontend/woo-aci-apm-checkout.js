@@ -75,6 +75,7 @@
 						buttonColor: "white",
 						buttonType: "pay",
 						buttonSizeMode: "fill",
+						gatewayMerchantId: woo_aci_apm_obj.entity_id
 					},
 					window.wpwlOptions.googlePay || {}
 				);
@@ -154,6 +155,7 @@
 				id: 'woo_aci_draft',
 				checkout_id: this.checkout_id,
 				admin_checkout_order_id: woo_aci_apm_obj.admin_checkout_order_id,
+				payment_key: woo_aci_apm_obj.payment_key[ this.selected_gateway() ],
 			};
 			this.create_draft_order_or_update_order( woo_aci_apm_obj, data );
 			if ( woo_aci_apm_obj.response.result === 'success' ) {

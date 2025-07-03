@@ -31,7 +31,7 @@ class WC_Admin_Action_Aci extends WC_Admin_Action_Ignite {
 	 * WC_Admin_Action_Aci constructor
 	 */
 	public function __construct() {
-		$this->logger  = wc_get_logger();
+		$this->logger  = wc_get_aci_logger();
 		$this->context = array( 'source' => 'Aci-capture-void-logger' );
 	}
 
@@ -51,7 +51,11 @@ class WC_Admin_Action_Aci extends WC_Admin_Action_Ignite {
 				$this->void( $order_id, $amount );
 			}
 		} catch ( Throwable $e ) {
-			$this->logger->info( 'Exception : ' . wc_print_r( $e, true ), $this->context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$this->logger->error( $error_logger, $this->context );
+			wc_add_notice( __( 'Unable to process request', 'woocommerce' ), 'error' );
 			$response = array(
 				'error'        => true,
 				'serverErrors' => __( 'Unable to process request', 'woocommerce' ),
@@ -100,7 +104,6 @@ class WC_Admin_Action_Aci extends WC_Admin_Action_Ignite {
 		}
 		$psp_response = $gateway->capture->create( $params );
 		$psp_response = json_decode( $psp_response, true );
-		$this->logger->info( 'Capture Response for the order #' . $order_id . ' : ' . wc_print_r( $psp_response, true ), $this->context );
 
 		if ( isset( $psp_response['result'] ) ) {
 			$result_code   = $psp_response['result']['code'];
@@ -184,7 +187,6 @@ class WC_Admin_Action_Aci extends WC_Admin_Action_Ignite {
 		$psp_response = $gateway->void->create( $params );
 		$response_msg = $psp_response;
 		$psp_response = json_decode( $psp_response, true );
-		$this->logger->info( 'Void Response for the order #' . $order_id . ' : ' . wc_print_r( $psp_response, true ), $this->context );
 		if ( isset( $psp_response['result'] ) ) {
 			$result_code   = $psp_response['result']['code'];
 			$response_code = $this->validate_response( $result_code );

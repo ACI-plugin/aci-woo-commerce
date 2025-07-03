@@ -18,20 +18,27 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 	 * @param  boolean $tokenize tokenize.
 	 */
 	public function initialize( $tokenize = false ) {
-		$logger  = wc_get_logger();
+		$logger  = wc_get_aci_logger();
 		$context = array( 'source' => 'Aci-Initialize-logger' );
 		try {
+			$service_info_logger = array(
+				'message' => 'Service Initialized',
+				'method'  => 'WC_Ajax_Aci_CC::initialize()',
+			);
+			$logger->debug( wp_json_encode( $service_info_logger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), $context );
 			$initialize_params = $this->prepare_initialize_request();
 			$gateway           = $initialize_params['gateway'];
 			$params            = $initialize_params['params'];
 			$response          = $gateway->gateway->initialize->create( $params );
-			$logger->info( 'Initialize Response:' . wc_print_r( wp_json_encode( $response ), true ), $context );
 			if ( $gateway->is_fastcheckout() ) {
 				return $response;
 			}
 			wp_send_json( $response );
 		} catch ( Throwable $e ) {
-			$logger->info( 'Exception : ' . wc_print_r( $e, true ), $context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$logger->error( $error_logger, $context );
 			wp_send_json( '' );
 		}
 	}
@@ -41,21 +48,26 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 	 *
 	 * @param  mixed  $checkout_id checkout_id.
 	 * @param  string $brand brand.
+	 * @param  string $payment_method_id payment_method_id.
 	 */
-	public function updateCheckout( $checkout_id = '', $brand = '' ) {
-		$logger  = wc_get_logger();
+	public function updateCheckout( $checkout_id = '', $brand = '', $payment_method_id = '' ) {
+		$logger  = wc_get_aci_logger();
 		$context = array( 'source' => 'Aci-updateCheckout-logger' );
 		try {
-			$initialize_params = $this->prepare_initialize_request( $checkout_id, $brand );
+			$initialize_params = $this->prepare_initialize_request( $checkout_id, $brand, $payment_method_id );
 			$gateway           = $initialize_params['gateway'];
 			$params            = $initialize_params['params'];
 			$response          = $gateway->gateway->updatecheckout->create( $params, $checkout_id );
-			$logger->info( 'updateCheckout Response:' . wc_print_r( wp_json_encode( $response ), true ), $context );
 			if ( $gateway->is_fastcheckout() ) {
 				return $response;
+			} else {
+				return true;
 			}
 		} catch ( Throwable $e ) {
-			$logger->info( 'Exception : ' . wc_print_r( $e, true ), $context );
+			$error_logger = array(
+				'error' => $e,
+			);
+			$logger->error( $error_logger, $context );
 			wp_send_json( '' );
 		}
 	}
@@ -65,8 +77,9 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 	 *
 	 * @param  mixed  $checkout_id checkout_id.
 	 * @param  string $brand brand.
+	 * @param  string $payment_method_id payment_method_id.
 	 */
-	public function prepare_initialize_request( $checkout_id = '', $brand = '' ) {
+	public function prepare_initialize_request( $checkout_id = '', $brand = '', $payment_method_id = '' ) {
 		$admin_checkout_order_id = wc_get_post_data_by_key( 'admin_checkout_order_id' );
 		if ( ! empty( $admin_checkout_order_id ) && '0' !== $admin_checkout_order_id ) {
 			$order             = wc_get_order( absint( $admin_checkout_order_id ) );
@@ -77,9 +90,16 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 			$currency          = get_woocommerce_currency();
 		}
 
-		$gateways = WC()->payment_gateways()->payment_gateways();
+		$gateways   = WC()->payment_gateways()->payment_gateways();
 
-		$gateway_id = ( ! empty( $checkout_id ) ) ? 'woo_aci_fc' : wc_get_post_data_by_key( 'id' );
+		if ( ! empty( $checkout_id ) && ! empty( $brand ) ) {
+			$gateway_id = 'woo_aci_fc';
+		} elseif ( $payment_method_id ) {
+			$gateway_id = $payment_method_id;
+		} else {
+			$gateway_id = wc_get_post_data_by_key( 'id' );
+		}
+
 		$gateway    = $gateways[ $gateway_id ];
 		$payment_id = '';
 

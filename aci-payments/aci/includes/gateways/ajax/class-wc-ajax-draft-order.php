@@ -28,6 +28,7 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 			$order            = $this->get_draft_order();
 			$order_id         = wc_get_post_data_by_key( 'admin_checkout_order_id' );
 			$payment_id       = wc_get_post_data_by_key( 'payment_method' );
+			$payment_key      = wc_get_post_data_by_key( 'payment_key' );
 			if ( ! empty( $order_id ) ) {
 				if ( isset( $_POST['woocommerce_pay'], $_POST['key'] ) ) {
 					wc_nocache_headers();
@@ -102,6 +103,10 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 			$order->add_meta_data( 'checkout_id', $checkout_id, true );
 			$order->add_meta_data( 'aci_payment_id', $payment_id, true );
 			$order->save_meta_data();
+
+			$payment_method    = ! empty( $payment_key ) ? 'woo_aci_apm' : $payment_id;
+			$initialize_widget = new WC_Ajax_Aci_CC();
+			$checkout_response = $initialize_widget->updateCheckout( $checkout_id, '', $payment_method );
 			if ( wc_notice_count( 'error' ) ) {
 				throw new Exception();
 			}

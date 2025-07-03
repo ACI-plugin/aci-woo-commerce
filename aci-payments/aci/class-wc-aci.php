@@ -14,6 +14,7 @@ use Aci\Service\TransactionService;
 use Aci\Service\SubscriptionService;
 use Aci\Service\GetCryptoHashService;
 use Aci\Service\UpdateCheckoutService;
+use Aci\Service\DeleteSavedCardService;
 
 defined( 'ABSPATH' ) || exit();
 
@@ -65,7 +66,7 @@ class WC_Aci {
 		add_action( 'woocommerce_proceed_to_checkout', array( $this, 'add_fc_button' ) );
 		add_action( 'wp_head', array( $this, 'add_inline_styles_to_head' ) );
 		add_filter( 'ignite_enable_add_payment_method', array( $this, 'access_payment_in_accountpage' ) );
-		add_filter( 'woocommerce_account_menu_items', array( $this, 'hide_payment_method_menu' ) );
+		add_filter( 'woocommerce_data_stores', array( $this, 'override_wc_payment_token_data_store' ), 20 );
 	}
 
 	/**
@@ -81,8 +82,19 @@ class WC_Aci {
 				display: flex;
 				flex-direction: column;
 			}
-		' . $aci_css;
-		echo "<style>{$inline_styles}</style>";
+		' . esc_html( $aci_css );
+		echo '<style>' . esc_html( $inline_styles ) . '</style>';
+	}
+
+	/**
+	 * Override the payment token data store class
+	 *
+	 * @param array $stores Array of data store classes.
+	 * @return mixed
+	 */
+	public function override_wc_payment_token_data_store( $stores ) {
+		$stores['payment-token'] = 'WC_Payment_Token_Data_Store_Aci';
+		return $stores;
 	}
 
 	/**
@@ -153,6 +165,8 @@ class WC_Aci {
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/class-wc-payment-gateway-aci-fc.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/class-wc-payment-gateway-aci-apm.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/payment-tokens/class-wc-payment-token-aci-cc.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/payment-tokens/class-wc-payment-token-data-store-aci.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/logger/class-aci-logger.php';
 		$gateways = array( WC_Payment_Gateway_Aci_CC::class, WC_Payment_Gateway_Aci_APM::class, WC_Payment_Gateway_Aci_FC::class );
 		return $gateways;
 	}
@@ -178,14 +192,15 @@ class WC_Aci {
 	 * @return array
 	 */
 	public function wc_aci_override_service( $class_map ) {
-		$class_map['initialize']     = InitializeService::class;
-		$class_map['capture']        = CaptureService::class;
-		$class_map['void']           = VoidService::class;
-		$class_map['refund']         = RefundService::class;
-		$class_map['transaction']    = TransactionService::class;
-		$class_map['subscription']   = SubscriptionService::class;
-		$class_map['cryptohash']     = GetCryptoHashService::class;
-		$class_map['updatecheckout'] = UpdateCheckoutService::class;
+		$class_map['initialize']        = InitializeService::class;
+		$class_map['capture']           = CaptureService::class;
+		$class_map['void']              = VoidService::class;
+		$class_map['refund']            = RefundService::class;
+		$class_map['transaction']       = TransactionService::class;
+		$class_map['subscription']      = SubscriptionService::class;
+		$class_map['cryptohash']        = GetCryptoHashService::class;
+		$class_map['updatecheckout']    = UpdateCheckoutService::class;
+		$class_map['delete_saved_card'] = DeleteSavedCardService::class;
 
 		return $class_map;
 	}
@@ -294,16 +309,6 @@ class WC_Aci {
 	 * Callback method for wp_enqueue_scripts action
 	 */
 	public function wc_aci_enqueue_scripts() {
-		if ( is_checkout() ) {
-			if ( $this->get_gateway() ) {
-				$aci_javascript = $this->get_gateway()->get_aci_javascript();
-			}
-			if ( $aci_javascript ) {
-				wp_add_inline_script( 'woocommerce', '(function($) {' . $aci_javascript . '})(jQuery);', 'after' );
-			} else {
-				wp_add_inline_script( 'woocommerce', 'window.wpwlOptions={};', 'after' );
-			}
-		}
 		$aci_css = '';
 		if ( $this->get_gateway() ) {
 			$aci_css = $this->get_gateway()->get_aci_css();
@@ -333,7 +338,7 @@ class WC_Aci {
 	public function woo_aci_install_dependencies() {
 		$skin     = new WP_Ajax_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
-		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.2.1.zip' );
+		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.3.0.zip' );
 		if ( $package && ! is_wp_error( $package ) ) {
 			$plugin_to_activate = 'tryzens-ignite/tryzens-ignite.php';
 			if ( ! is_plugin_active( $plugin_to_activate ) ) {

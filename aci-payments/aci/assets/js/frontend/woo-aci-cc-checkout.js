@@ -39,8 +39,18 @@
 				$( `.payment_box.payment_method_${ woo_aci_cc_obj.id }` ).html( '' );
 				this.load_aci_script( `.payment_box.payment_method_${ woo_aci_cc_obj.id }`, woo_aci_cc_obj.end_point, data.id, data.integrity );
 				this.load_aci_from( `.payment_box.payment_method_${ woo_aci_cc_obj.id }`, woo_aci_cc_obj.shopper_result_url, woo_aci_cc_obj.supported_card_brands );
-				
-				window.wpwlOptions = window.wpwlOptions || {};
+				if (typeof window.wpwlOptions !== "object") {
+					window.wpwlOptions = {};
+				}
+				if (woo_aci_cc_obj.custom_js_code) {
+					const func = new Function(
+						"window",
+						`
+						${woo_aci_cc_obj.custom_js_code}
+						`
+					);
+					func( window );
+				}
 				window.wpwlOptions.registrations = Object.assign( {}, window.wpwlOptions.registrations, { requireCvv: true } );
 
 				const existingOnReady = window.wpwlOptions.onReady || function() {};
