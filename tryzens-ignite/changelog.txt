@@ -1,0 +1,8 @@
+*** Tryzens Ignite Changelog ***
+
+2024-09-7 - version 1.0.0
+* Added - Admin configurations and webhooks
+* Added - Card payments
+* Fixed - Important bug fix
+2025-03-28 - version 1.2.1
+* Added - Fast Checkout Payment gateway

@@ -132,7 +132,6 @@ class WC_Aci_Rest_Controller extends WC_Ignite_Rest_Controller {
 				);
 			}
 			$logger->error( $error_logger, array( 'source' => 'ACI-Webhook-Request' ) );
-			wc_add_notice( __( 'Unable to update woo.', 'woocommerce' ), 'error' );
 			return new WP_Error();
 		}
 	}

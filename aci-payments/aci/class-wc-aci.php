@@ -60,9 +60,6 @@ class WC_Aci {
 		add_filter( 'woocommerce_available_payment_gateways', array( $this, 'wc_aci_available_payment_gateways' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'wc_aci_enqueue_scripts' ) );
 		add_action( 'plugins_loaded', array( $this, 'woo_aci_plugins_loaded' ) );
-		register_activation_hook( WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', array( $this, 'woo_aci_install_dependencies' ) );
-		add_action( 'upgrader_process_complete', array( $this, 'woo_aci_rename_dependencies_folder' ), 10, 2 );
-		register_deactivation_hook( WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', array( $this, 'woo_aci_deactivation_dependencies' ) );
 		add_action( 'woocommerce_proceed_to_checkout', array( $this, 'add_fc_button' ) );
 		add_action( 'wp_head', array( $this, 'add_inline_styles_to_head' ) );
 		add_filter( 'ignite_enable_add_payment_method', array( $this, 'access_payment_in_accountpage' ) );

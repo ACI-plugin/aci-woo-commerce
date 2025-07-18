@@ -1,0 +1,9 @@
+{
+    "name": "tryzens/ignite",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Ignite\\": "ignite/packages/Ignite/"
+        }
+    }
+}
