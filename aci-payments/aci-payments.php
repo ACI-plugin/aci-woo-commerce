@@ -5,7 +5,7 @@
  * Version: 1.2.0
  * Author: Tryzens
  * Author URI: tryzens.com
- * Requires Plugins: woocommerce
+ * Requires Plugins: woocommerce, tryzens-ignite
  * Requires PHP: 8.2
  * Requires at least: 6.6.1
  * Tested up to: 6.8.1
