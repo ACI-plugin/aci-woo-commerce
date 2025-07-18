@@ -19,10 +19,10 @@ A WooCommerce payment plugin by Tryzens for secure payment processing.
 ## Installation
 
 1. Download the `.zip` file from the ACI GitHub repository.
-2. Extract `aci-woo-commerce-main.zip`.
-3. Inside, locate the `tryzens-ignite` folder.
+2. Extract `aci-woo-commerce-1.2.1.zip`.
+3. locate the `tryzens-ignite` folder.
 4. Compress the `tryzens-ignite` folder into `tryzens-ignite.zip`.
-5. Inside, locate the `aci-payments` folder.
+5. locate the `aci-payments` folder.
 6. Compress the `aci-payments` folder into `aci-payments.zip`.
 7. Go to your WordPress Dashboard → Plugins → Add New → Upload Plugin.
 8. Select `tryzens-ignite.zip` and click **Install Now**.
