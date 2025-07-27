@@ -124,7 +124,6 @@ $form_fields = array(
 	'css'                    => array(
 		'title'             => __( 'CSS', 'woocommerce' ),
 		'type'              => 'textarea',
-		'default'           => '',
 		'description'       => __( 'CSS helps to customize default checkout payment page experience. <a href="https://docs.aciworldwide.com/tutorials/integration-guide/advanced-options#" target="_blank">Click here</a> for more details. ', 'woocommerce' ),
 		'desc_tip'          => false,
 		'custom_attributes' => array(

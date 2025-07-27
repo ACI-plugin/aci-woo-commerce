@@ -22,6 +22,30 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 	 * @throws Exception If the draft order creation or updation fails.
 	 */
 	public function create_draft_order_or_update_order() {
+		// Check if response was already sent.
+		if ( headers_sent() ) {
+			wp_send_json(
+				array(
+					'result'  => 'error',
+					'message' => __( 'Response already sent by another function', 'woocommerce' ),
+				)
+			);
+		}
+
+		// Clear any existing output buffers from aggressive plugins.
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+
+		// Start fresh output buffering to catch any wp_send_json calls.
+		ob_start();
+
+		// Also capture any output that might be sent before our function.
+		$pre_output = ob_get_contents();
+		if ( ! empty( $pre_output ) ) {
+			ob_clean(); // Clear any pre-existing output.
+		}
+
 		try {
 			wc_clear_notices();
 			$order_controller = new OrderController();
@@ -35,7 +59,15 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 					$nonce_value = wc_get_var( $_REQUEST['woocommerce-pay-nonce'], wc_get_var( $_REQUEST['_wpnonce'], '' ) ); // @codingStandardsIgnoreLine.
 					if ( ! wp_verify_nonce( $nonce_value, 'woocommerce-pay' ) ) {
 						wc_add_notice( __( 'We were unable to process your order, please try again.', 'woocommerce' ), 'error' );
-						$this->send_ajax_failure_response();
+						ob_end_clean(); // Clear any output.
+						wp_send_json(
+							array(
+								'result'   => 'failure',
+								'messages' => wc_print_notices( 'html' ),
+								'refresh'  => false,
+								'reload'   => false,
+							)
+						);
 					}
 					$order_key = wp_unslash( $_POST['key'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 					$order     = wc_get_order( $order_id );
@@ -73,7 +105,15 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 					}
 					WC()->session->set( 'refresh_totals', true );
 					wc_add_notice( __( 'We were unable to process your order, please try again.', 'woocommerce' ), 'error' );
-					$this->send_ajax_failure_response();
+					ob_end_clean(); // Clear any output.
+					wp_send_json(
+						array(
+							'result'   => 'failure',
+							'messages' => wc_print_notices( 'html' ),
+							'refresh'  => false,
+							'reload'   => false,
+						)
+					);
 				}
 				$errors      = new WP_Error();
 				$posted_data = $this->get_posted_data();
@@ -110,12 +150,21 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 			if ( wc_notice_count( 'error' ) ) {
 				throw new Exception();
 			}
+			ob_end_clean(); // Clear any output.
 			wp_send_json( array( 'result' => 'success' ) );
 		} catch ( Throwable $e ) {
 			if ( wc_notice_count( 'error' ) === 0 ) {
 				wc_add_notice( __( 'We are currently unable to process your payment. Please try again', 'woocommerce' ), 'error' );
 			}
-			$this->send_ajax_failure_response();
+			ob_end_clean(); // Clear any output.
+			wp_send_json(
+				array(
+					'result'   => 'failure',
+					'messages' => wc_print_notices( 'html' ),
+					'refresh'  => false,
+					'reload'   => false,
+				)
+			);
 		}
 	}
 }
