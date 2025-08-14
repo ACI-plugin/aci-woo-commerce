@@ -1004,19 +1004,6 @@ trait WC_Aci_Settings_Trait {
 			"woocommerce_order_status_refunded_to_{$status}_notification",
 		);
 
-		foreach ( $hooks as $hook ) {
-			add_action(
-				$hook,
-				function ( $oid ) use ( $order_id, $status, $hook, $logger, $context ) {
-					if ( $oid === $order_id ) {
-						$logger->debug( "WooCommerce fired: {$hook} for order #{$order_id}", $context );
-					}
-				},
-				10,
-				1
-			);
-		}
-
 		// Admin + Customer recipient tracking for relevant statuses.
 		if ( in_array( $status, array( 'failed', 'processing', 'on-hold' ), true ) ) {
 			// Admin recipients.
@@ -1029,7 +1016,6 @@ trait WC_Aci_Settings_Trait {
 				$admin_email_hooks[ $status ],
 				function ( $recipient, $order ) use ( $order_id, $status, $logger, $context ) {
 					if ( $order->get_id() === $order_id ) {
-						$logger->debug( "Admin {$status} order recipient for order #{$order_id}: {$recipient}", $context );
 						$this->email_expected[ $order_id ][ $status ]['admin'] = true;
 					}
 					return $recipient;
@@ -1048,7 +1034,6 @@ trait WC_Aci_Settings_Trait {
 				$customer_email_hooks[ $status ],
 				function ( $recipient, $order ) use ( $order_id, $status, $logger, $context ) {
 					if ( $order->get_id() === $order_id ) {
-						$logger->debug( "Customer {$status} order recipient for order #{$order_id}: {$recipient}", $context );
 						$this->email_expected[ $order_id ][ $status ]['customer'] = true;
 					}
 					return $recipient;
@@ -1077,7 +1062,6 @@ trait WC_Aci_Settings_Trait {
 
 				if ( in_array( $status, array( 'failed', 'processing', 'on-hold' ), true ) ) {
 					if ( empty( $expected['admin'] ) ) {
-						$logger->debug( "Woo did not send admin {$status} email for order #{$order_id}. Sending manually.", $context );
 						switch ( $status ) {
 							case 'failed':
 								WC()->mailer()->emails['WC_Email_Failed_Order']->trigger( $order_id );
@@ -1089,7 +1073,6 @@ trait WC_Aci_Settings_Trait {
 						}
 					}
 					if ( empty( $expected['customer'] ) ) {
-						$logger->debug( "Woo did not send customer {$status} email for order #{$order_id}. Sending manually.", $context );
 						switch ( $status ) {
 							case 'failed':
 								WC()->mailer()->emails['WC_Email_Customer_Failed_Order']->trigger( $order_id );
@@ -1102,8 +1085,6 @@ trait WC_Aci_Settings_Trait {
 								break;
 						}
 					}
-				} else {
-					$logger->debug( "No manual email triggers defined for '{$status}' on order #{$order_id}", $context );
 				}
 			},
 			999

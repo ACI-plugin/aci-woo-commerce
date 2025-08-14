@@ -74,8 +74,9 @@ class AciApiRequestor extends ApiRequestor {
 				: $args;
 			$log_body = $this->parse_query_data( $body );
 		}
+		$log_endpoint       = $logger->redact_sensitive_url_parts( $this->api_url . $endpoint );
 		$api_request_logger = array(
-			'Request URL ' . $method => $this->api_url . $endpoint,
+			'Request URL ' . $method => $log_endpoint,
 			'Request Body'           => $log_body,
 			'Request Headers'        => $logger->convertHeadersToAssoc( $headers ),
 		);

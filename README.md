@@ -7,7 +7,7 @@ A WooCommerce payment plugin by Tryzens for secure payment processing.
 
 - **Plugin Name:** ACI
 - **Description:** Payment plugin for WooCommerce
-- **Version:** 1.2.0
+- **Version:** 1.2.2
 - **Author:** Tryzens
 - **Requires Plugins:** WooCommerce
 - **Requires PHP:** 8.2
