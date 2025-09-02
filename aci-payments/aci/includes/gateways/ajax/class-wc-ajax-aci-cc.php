@@ -49,12 +49,13 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 	 * @param  mixed  $checkout_id checkout_id.
 	 * @param  string $brand brand.
 	 * @param  string $payment_method_id payment_method_id.
+	 * @param  string $order_id order_id.
 	 */
-	public function updateCheckout( $checkout_id = '', $brand = '', $payment_method_id = '' ) {
+	public function updateCheckout( $checkout_id = '', $brand = '', $payment_method_id = '', $order_id = '' ) {
 		$logger  = wc_get_aci_logger();
 		$context = array( 'source' => 'Aci-updateCheckout-logger' );
 		try {
-			$initialize_params = $this->prepare_initialize_request( $checkout_id, $brand, $payment_method_id );
+			$initialize_params = $this->prepare_initialize_request( $checkout_id, $brand, $payment_method_id, $order_id );
 			$gateway           = $initialize_params['gateway'];
 			$params            = $initialize_params['params'];
 			$response          = $gateway->gateway->updatecheckout->create( $params, $checkout_id );
@@ -78,8 +79,9 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 	 * @param  mixed  $checkout_id checkout_id.
 	 * @param  string $brand brand.
 	 * @param  string $payment_method_id payment_method_id.
+	 * @param  string $order_id order_id.
 	 */
-	public function prepare_initialize_request( $checkout_id = '', $brand = '', $payment_method_id = '' ) {
+	public function prepare_initialize_request( $checkout_id = '', $brand = '', $payment_method_id = '', $order_id = '' ) {
 		$admin_checkout_order_id = wc_get_post_data_by_key( 'admin_checkout_order_id' );
 		if ( ! empty( $admin_checkout_order_id ) && '0' !== $admin_checkout_order_id ) {
 			$order             = wc_get_order( absint( $admin_checkout_order_id ) );
@@ -90,7 +92,7 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 			$currency          = get_woocommerce_currency();
 		}
 
-		$gateways   = WC()->payment_gateways()->payment_gateways();
+		$gateways = WC()->payment_gateways()->payment_gateways();
 
 		if ( ! empty( $checkout_id ) && ! empty( $brand ) ) {
 			$gateway_id = 'woo_aci_fc';
@@ -162,6 +164,9 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 			}
 			if ( ! empty( $checkout_id ) ) {
 				unset( $params['integrity'] );
+				if ( ! empty( $order_id ) ) {
+					$params['merchantTransactionId'] = $order_id;
+				}
 			}
 			return array(
 				'params'  => $params,

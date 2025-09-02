@@ -20,3 +20,5 @@
 * Fixed - Customer information not passed during ACI initialization.
 2025-08-14 - version 1.2.2
 * Added - ACI Logger Changes
+2025-09-02 - version 1.2.3
+* Fixed - Updated initialization API to use order number in merchantTransactionId

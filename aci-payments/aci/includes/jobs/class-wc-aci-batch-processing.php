@@ -111,7 +111,7 @@ class WC_Aci_Batch_Processing extends WC_Ignite_Batch_Processing {
 					if ( 'checkout-draft' === $prev_order_status ) {
 						$this->check_and_send_missing_email( $orders->get_id(), $new_status );
 					}
-					
+
 					if ( 'processing' === $new_status || 'on-hold' === $new_status ) {
 						$gateways    = WC()->payment_gateways()->payment_gateways();
 						$gateway_id  = $orders->get_payment_method();

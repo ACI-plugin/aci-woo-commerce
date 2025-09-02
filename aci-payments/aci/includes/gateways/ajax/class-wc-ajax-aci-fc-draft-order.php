@@ -141,7 +141,8 @@ class WC_Ajax_Aci_FC_Draft_Order extends WC_Checkout {
 			$order             = $this->get_draft_order();
 			$checkout_id       = $order->get_meta( 'checkout_id' );
 			$initialize_widget = new WC_Ajax_Aci_CC();
-			$checkout_response = $initialize_widget->updateCheckout( $checkout_id, $brand );
+			$order_id          = $order->get_id();
+			$checkout_response = $initialize_widget->updateCheckout( $checkout_id, $brand, '', $order_id );
 			if ( ! empty( $checkout_response ) ) {
 				$order_controller = new OrderController();
 

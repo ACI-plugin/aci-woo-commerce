@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ACI
  * Description: Payment plugin
- * Version: 1.2.2
+ * Version: 1.2.3
  * Author: Tryzens
  * Author URI: tryzens.com
  * Requires Plugins: woocommerce
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit();
 
 define( 'WC_ACI_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WC_ACI_ASSETS', plugin_dir_url( __FILE__ ) . 'aci/assets/' );
-define( 'WC_ACI_VERSION', '1.2.2' );
+define( 'WC_ACI_VERSION', '1.2.3' );
 
 require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
 require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';

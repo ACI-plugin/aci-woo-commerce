@@ -127,7 +127,7 @@ class WC_Aci_Rest_Controller extends WC_Ignite_Rest_Controller {
 			);
 			if ( $json_payload ) {
 				$error_logger['data'] = array(
-					'transaction_id'  => $json_payload['payload']['id'] ?? '',
+					'transaction_id' => $json_payload['payload']['id'] ?? '',
 					'payment_method' => $json_payload['payload']['paymentBrand'] ?? '',
 				);
 			}
