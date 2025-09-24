@@ -338,7 +338,7 @@ class WC_Aci {
 	public function woo_aci_install_dependencies() {
 		$skin     = new WP_Ajax_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
-		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.3.0.zip' );
+		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.3.2.zip' );
 		if ( $package && ! is_wp_error( $package ) ) {
 			$plugin_to_activate = 'tryzens-ignite/tryzens-ignite.php';
 			if ( ! is_plugin_active( $plugin_to_activate ) ) {

@@ -52,6 +52,9 @@ class WC_Ajax_Aci_FC_Draft_Order extends WC_Checkout {
 				$order->add_meta_data( 'checkout_id', $init_response['id'], true );
 				$order->add_meta_data( 'aci_payment_id', $payment_id, true );
 				$order->save_meta_data();
+				$payment_method = 'woo_aci_fc';
+				$order->set_payment_method( $payment_method );
+				$order->save();
 				if ( wc_notice_count( 'error' ) ) {
 					throw new Exception();
 				}
@@ -67,7 +70,9 @@ class WC_Ajax_Aci_FC_Draft_Order extends WC_Checkout {
 
 
 	/**
-	 * Performs update order
+	 * Update order
+	 *
+	 * @throws Exception If the order updation fails.
 	 */
 	public function update_order() {
 		$response = array(
@@ -138,7 +143,10 @@ class WC_Ajax_Aci_FC_Draft_Order extends WC_Checkout {
 			if ( ! empty( $shipping_option_data ) ) {
 				$this->update_shipping_method( $shipping_option_data, 'order' );
 			}
-			$order             = $this->get_draft_order();
+			$order = $this->get_draft_order();
+			if ( ! $order ) {
+				throw new Exception();
+			}
 			$checkout_id       = $order->get_meta( 'checkout_id' );
 			$initialize_widget = new WC_Ajax_Aci_CC();
 			$order_id          = $order->get_id();

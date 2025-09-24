@@ -195,7 +195,7 @@ trait WC_Aci_Initialize_Trait {
 	public function prepare_custom_parameters() {
 		$module_name       = $this->value_module_name;
 		$custom_parameters = array(
-			$this->key_system_name    => $this->value_platform_name,
+			$this->key_system_name    => $this->aci_value_platform_name,
 			$this->key_system_version => 'WooCommerce Version: ' . WC()->version,
 			$this->key_module_name    => $module_name,
 			$this->key_module_version => WC_ACI_VERSION,

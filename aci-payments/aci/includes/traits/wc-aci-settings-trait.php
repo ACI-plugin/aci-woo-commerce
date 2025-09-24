@@ -459,10 +459,10 @@ trait WC_Aci_Settings_Trait {
 	/**
 	 * Define value_platform_name
 	 *
-	 * @var $value_platform_name
+	 * @var $aci_value_platform_name
 	 */
 
-	public $value_platform_name = 'WOO';
+	public $aci_value_platform_name = 'WOO';
 
 	/**
 	 * Define value_module_name

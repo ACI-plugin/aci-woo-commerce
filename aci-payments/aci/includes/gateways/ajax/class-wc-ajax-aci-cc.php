@@ -83,14 +83,6 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 	 */
 	public function prepare_initialize_request( $checkout_id = '', $brand = '', $payment_method_id = '', $order_id = '' ) {
 		$admin_checkout_order_id = wc_get_post_data_by_key( 'admin_checkout_order_id' );
-		if ( ! empty( $admin_checkout_order_id ) && '0' !== $admin_checkout_order_id ) {
-			$order             = wc_get_order( absint( $admin_checkout_order_id ) );
-			$cart_total_amount = $order->get_total();
-			$currency          = $order->get_currency();
-		} else {
-			$cart_total_amount = WC()->cart->total;
-			$currency          = get_woocommerce_currency();
-		}
 
 		$gateways = WC()->payment_gateways()->payment_gateways();
 
@@ -126,6 +118,15 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 				$payment_type = 'DB';
 			} else {
 				$payment_type = 'PA';
+			}
+
+			if ( ! empty( $admin_checkout_order_id ) && '0' !== $admin_checkout_order_id ) {
+				$order             = wc_get_order( absint( $admin_checkout_order_id ) );
+				$cart_total_amount = $gateway->format_number( $order->get_total() );
+				$currency          = $order->get_currency();
+			} else {
+				$cart_total_amount = $gateway->format_number( WC()->cart->total );
+				$currency          = get_woocommerce_currency();
 			}
 
 			$params     = array(

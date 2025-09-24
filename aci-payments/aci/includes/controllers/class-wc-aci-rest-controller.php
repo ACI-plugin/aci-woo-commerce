@@ -110,15 +110,28 @@ class WC_Aci_Rest_Controller extends WC_Ignite_Rest_Controller {
 			 *
 			 * @since 1.0.1
 			 */
-			$class_name     = apply_filters( 'wc_aci_batch_processing_class', WC_Aci_Batch_Processing::class );
-			$create_batch   = new $class_name();
-			$transaction_id = $json_payload['payload']['id'];
-			$orders         = $create_batch->wc_ignite_get_order_from_transaction( $transaction_id );
+			$class_name   = apply_filters( 'wc_aci_batch_processing_class', WC_Aci_Batch_Processing::class );
+			$create_batch = new $class_name();
+			$order_id     = $json_payload['payload']['merchantTransactionId'];
+			$logger       = wc_get_aci_logger();
+			$orders       = wc_get_order( $order_id );
+			// Add current timestamp.
+			$json_payload['Timestamp'] = time();
+
+			// Encode back to JSON.
+			$updated_json_payload = wp_json_encode( $json_payload, JSON_PRETTY_PRINT );
 			if ( $orders ) {
-				$create_batch->ignite_prepare_batch( $payload );
+				// Skip refunds.
+				if ( $orders instanceof WC_Order_Refund ) {
+					$logger->debug( "Skipping refund object for ID: $order_id", array( 'source' => 'ACI-Webhook-Request' ) );
+					return rest_ensure_response( array() );
+				}
+				$create_batch->ignite_prepare_batch( $updated_json_payload );
 				return rest_ensure_response( array() );
 			} else {
-				throw new Exception( 'Invalid request payload.' );
+				// Ignoring webhooks incase of no order exist.
+				$logger->debug( "No order exist ID: $order_id", array( 'source' => 'ACI-Webhook-Request' ) );
+				return rest_ensure_response( array() );
 			}
 		} catch ( Throwable $e ) {
 			$logger       = wc_get_aci_logger();

@@ -100,11 +100,16 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 				$this->set_draft_order_id( $order->get_id() );
 			}
 			$checkout_id = wc_get_post_data_by_key( 'checkout_id' );
+			if ( ! $order || ! $checkout_id ) {
+				throw new Exception();
+			}
 			$order->add_meta_data( 'checkout_id', $checkout_id, true );
 			$order->add_meta_data( 'aci_payment_id', $payment_id, true );
 			$order->save_meta_data();
 
-			$payment_method    = ! empty( $payment_key ) ? 'woo_aci_apm' : $payment_id;
+			$payment_method = ! empty( $payment_key ) ? 'woo_aci_apm' : $payment_id;
+			$order->set_payment_method( $payment_method );
+			$order->save();
 			$order_id          = $order->get_id();
 			$initialize_widget = new WC_Ajax_Aci_CC();
 			$checkout_response = $initialize_widget->updateCheckout( $checkout_id, '', $payment_method, $order_id );
