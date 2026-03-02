@@ -37,12 +37,13 @@ trait WC_Aci_Initialize_Trait {
 		$shipping_array          = $this->get_address_data( $customer_data, $this->shipping_address_prefix );
 		$cart_item_array         = $this->prepare_cart_item( $order, $gateway_key, $cart_total_amount );
 		$custom_param_array      = $this->prepare_custom_parameters();
+		$opp_param_array         = $this->get_opp_parameters( $order );
 		$customer_array          = $this->prepare_customer_request( $customer_data );
 		$klarna_specific_address = array();
 		if ( $gateway_key === $this->klarna_payments ) {
 			$klarna_specific_address = $this->get_klarna_specific_address( $customer_data, $order->get_shipping_method() );
 		}
-		return $this->remove_null_value( array_merge( $billing_array, $shipping_array, $klarna_specific_address, $cart_item_array, $custom_param_array, $customer_array ) );
+		return $this->remove_null_value( array_merge( $billing_array, $shipping_array, $klarna_specific_address, $cart_item_array, $custom_param_array, $opp_param_array, $customer_array ) );
 	}
 
 	/**
@@ -201,6 +202,318 @@ trait WC_Aci_Initialize_Trait {
 			$this->key_module_version => WC_ACI_VERSION,
 		);
 		return $this->format_custom_parameters_array( $custom_parameters );
+	}
+
+	/**
+	 * Get OPP parameters from settings (both manual and dropdown entries).
+	 *
+	 * @param WC_Order|null $order Order object (null if using cart).
+	 * @return array OPP parameters to be added to initialize call.
+	 */
+	public function get_opp_parameters( $order = null ) {
+		$opp_params = array();
+
+		// Get manual entry parameters from settings array.
+		$manual_settings = get_option( 'woocommerce_aci_opp_manual_settings', array() );
+		$manual_params   = isset( $manual_settings['opp_parameters_manual'] ) ? $manual_settings['opp_parameters_manual'] : array();
+
+		if ( is_array( $manual_params ) && ! empty( $manual_params ) ) {
+			foreach ( $manual_params as $param ) {
+				if ( empty( $param['key'] ) ) {
+					continue;
+				}
+
+				$key = $param['key'];
+
+				if ( isset( $param['use_random'] ) && $param['use_random'] ) {
+					// Generate random value.
+					$random_type        = isset( $param['random_type'] ) ? $param['random_type'] : 'alphanumeric';
+					$length             = isset( $param['random_length'] ) ? intval( $param['random_length'] ) : 10;
+					$opp_params[ $key ] = $this->generate_random_value( $random_type, $length );
+				} else {
+					// Use static value.
+					$opp_params[ $key ] = isset( $param['value'] ) ? $param['value'] : '';
+				}
+			}
+		}
+
+		// Get dropdown entry parameters (WooCommerce field mappings) from settings array.
+		$dropdown_settings = get_option( 'woocommerce_aci_opp_dropdown_settings', array() );
+		$dropdown_params   = isset( $dropdown_settings['opp_parameters_dropdown'] ) ? $dropdown_settings['opp_parameters_dropdown'] : array();
+
+		if ( is_array( $dropdown_params ) && ! empty( $dropdown_params ) ) {
+			foreach ( $dropdown_params as $param ) {
+				if ( empty( $param['key'] ) || empty( $param['wc_field'] ) ) {
+					continue;
+				}
+
+				$key        = $param['key'];
+				$field_path = $param['wc_field'];
+
+				// Get the WooCommerce field value.
+				$value = $this->get_woocommerce_field_value( $field_path, $order );
+				if ( null !== $value && '' !== $value ) {
+					$opp_params[ $key ] = $value;
+				}
+			}
+		}
+
+		// Return OPP parameters as direct key-value pairs (not nested in customParameters).
+		return $opp_params;
+	}
+
+	/**
+	 * Get value from WooCommerce field path
+	 *
+	 * @param string   $field_path Field path like 'Cart.total' or 'Order.id'.
+	 * @param WC_Order $order Order object (optional, if available).
+	 * @return mixed Field value
+	 */
+	public function get_woocommerce_field_value( $field_path, $order = null ) {
+		$parts = explode( '.', $field_path );
+		if ( count( $parts ) < 2 ) {
+			return null;
+		}
+
+		$source = $parts[0];
+		$field  = $parts[1];
+
+		switch ( $source ) {
+			case 'Cart':
+				return $this->get_cart_field_value( $field );
+
+			case 'Order':
+				if ( $order instanceof WC_Order ) {
+					return $this->get_order_field_value( $order, $field );
+				}
+				break;
+
+			case 'Checkout':
+				return $this->get_checkout_field_value( $field );
+
+			case 'Billing':
+				if ( $order instanceof WC_Order && $order->get_id() ) {
+					return $this->get_billing_field_value( $order, $field );
+				} else {
+					return $this->get_cart_billing_field_value( $field );
+				}
+				break;
+
+			case 'Shipping':
+				if ( $order instanceof WC_Order && $order->get_id() ) {
+					return $this->get_shipping_field_value( $order, $field );
+				} else {
+					return $this->get_cart_shipping_field_value( $field );
+				}
+				break;
+
+			case 'Customer':
+				if ( $order instanceof WC_Order && $order->get_id() ) {
+					$customer = new WC_Customer( $order->get_customer_id() );
+				} else {
+					$customer = WC()->customer;
+				}
+				return $this->get_customer_field_value( $customer, $field );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get cart field value
+	 *
+	 * @param string $field Field name.
+	 * @return mixed
+	 */
+	public function get_cart_field_value( $field ) {
+		if ( ! WC()->cart ) {
+			return null;
+		}
+
+		$cart = WC()->cart;
+
+		switch ( $field ) {
+			case 'tax_included':
+				return wc_prices_include_tax();
+			case 'total':
+				return $this->format_number( $cart->get_total( 'raw' ) );
+			case 'total_tax':
+				return $this->format_number( $cart->get_total_tax() );
+			case 'subtotal':
+				return $this->format_number( $cart->get_subtotal() );
+			case 'subtotal_tax':
+				return $this->format_number( $cart->get_subtotal_tax() );
+			case 'discount_total':
+				return $this->format_number( $cart->get_discount_total() );
+			case 'discount_tax':
+				return $this->format_number( $cart->get_discount_tax() );
+			case 'shipping_total':
+				return $this->format_number( $cart->get_shipping_total() );
+			case 'shipping_tax':
+				return $this->format_number( $cart->get_shipping_tax() );
+			case 'fee_total':
+				return $this->format_number( $cart->get_fee_total() );
+			case 'fee_tax':
+				return $this->format_number( $cart->get_fee_tax() );
+			case 'cart_contents_total':
+				return $this->format_number( $cart->get_cart_contents_total() );
+			case 'cart_contents_tax':
+				return $this->format_number( $cart->get_cart_contents_tax() );
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Get order field value
+	 *
+	 * @param WC_Order $order Order object.
+	 * @param string   $field Field name.
+	 * @return mixed
+	 */
+	public function get_order_field_value( $order, $field ) {
+		// List of monetary fields that need formatting.
+		$monetary_fields = array( 'total', 'total_tax', 'discount_total', 'discount_tax', 'shipping_total', 'shipping_tax', 'cart_tax' );
+
+		$method_name = 'get_' . $field;
+		if ( method_exists( $order, $method_name ) ) {
+			$value = $order->$method_name();
+			// Format monetary values.
+			if ( in_array( $field, $monetary_fields, true ) && is_numeric( $value ) ) {
+				return $this->format_number( $value );
+			}
+			return $value;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get checkout field value
+	 *
+	 * @param string $field Field name.
+	 * @return mixed
+	 */
+	public function get_checkout_field_value( $field ) {
+		switch ( $field ) {
+			case 'tax_total':
+				return WC()->cart ? $this->format_number( WC()->cart->get_total_tax() ) : 0;
+			case 'customer_message':
+				return wc_get_post_data_by_key( 'order_comments' );
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Get billing field value from order
+	 *
+	 * @param WC_Order $order Order object.
+	 * @param string   $field Field name.
+	 * @return mixed
+	 */
+	public function get_billing_field_value( $order, $field ) {
+		$method_name = 'get_billing_' . $field;
+		if ( method_exists( $order, $method_name ) ) {
+			return $order->$method_name();
+		}
+		return null;
+	}
+
+	/**
+	 * Get billing field value from cart/customer
+	 *
+	 * @param string $field Field name.
+	 * @return mixed
+	 */
+	public function get_cart_billing_field_value( $field ) {
+		if ( ! WC()->customer ) {
+			return null;
+		}
+		$method_name = 'get_billing_' . $field;
+		if ( method_exists( WC()->customer, $method_name ) ) {
+			return WC()->customer->$method_name();
+		}
+		return null;
+	}
+
+	/**
+	 * Get shipping field value from order
+	 *
+	 * @param WC_Order $order Order object.
+	 * @param string   $field Field name.
+	 * @return mixed
+	 */
+	public function get_shipping_field_value( $order, $field ) {
+		$method_name = 'get_shipping_' . $field;
+		if ( method_exists( $order, $method_name ) ) {
+			return $order->$method_name();
+		}
+		return null;
+	}
+
+	/**
+	 * Get shipping field value from cart/customer
+	 *
+	 * @param string $field Field name.
+	 * @return mixed
+	 */
+	public function get_cart_shipping_field_value( $field ) {
+		if ( ! WC()->customer ) {
+			return null;
+		}
+		$method_name = 'get_shipping_' . $field;
+		if ( method_exists( WC()->customer, $method_name ) ) {
+			return WC()->customer->$method_name();
+		}
+		return null;
+	}
+
+	/**
+	 * Get customer field value
+	 *
+	 * @param WC_Customer $customer Customer object.
+	 * @param string      $field Field name.
+	 * @return mixed
+	 */
+	public function get_customer_field_value( $customer, $field ) {
+		$method_name = 'get_' . $field;
+		if ( method_exists( $customer, $method_name ) ) {
+			return $customer->$method_name();
+		}
+		return null;
+	}
+
+	/**
+	 * Generate random value based on type and length
+	 *
+	 * @param string $type Random value type (numeric, alphabetic, alphanumeric).
+	 * @param int    $length Length of random value.
+	 * @return string
+	 */
+	public function generate_random_value( $type, $length ) {
+		$length = max( 1, min( 150, intval( $length ) ) );
+
+		switch ( $type ) {
+			case 'numeric':
+				$characters = '0123456789';
+				break;
+			case 'alphabetic':
+				$characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+				break;
+			case 'alphanumeric':
+			default:
+				$characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+				break;
+		}
+
+		$random_string = '';
+		$max           = strlen( $characters ) - 1;
+		for ( $i = 0; $i < $length; $i++ ) {
+			$random_string .= $characters[ wp_rand( 0, $max ) ];
+		}
+
+		return $random_string;
 	}
 
 	/**

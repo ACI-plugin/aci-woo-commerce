@@ -60,9 +60,6 @@ class WC_Aci {
 		add_filter( 'woocommerce_available_payment_gateways', array( $this, 'wc_aci_available_payment_gateways' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'wc_aci_enqueue_scripts' ) );
 		add_action( 'plugins_loaded', array( $this, 'woo_aci_plugins_loaded' ) );
-		register_activation_hook( WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', array( $this, 'woo_aci_install_dependencies' ) );
-		add_action( 'upgrader_process_complete', array( $this, 'woo_aci_rename_dependencies_folder' ), 10, 2 );
-		register_deactivation_hook( WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', array( $this, 'woo_aci_deactivation_dependencies' ) );
 		add_action( 'woocommerce_proceed_to_checkout', array( $this, 'add_fc_button' ) );
 		add_action( 'wp_head', array( $this, 'add_inline_styles_to_head' ) );
 		add_filter( 'ignite_enable_add_payment_method', array( $this, 'access_payment_in_accountpage' ) );
@@ -179,8 +176,16 @@ class WC_Aci {
 	public function aci_general_setting( $setting_classes ) {
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-general-settings.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-admin-settings.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-opp-manual-settings.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-opp-dropdown-settings.php';
 		$setting_classes['api_settings']  = 'WC_ACI_General_Settings';
 		$setting_classes['admin_setting'] = 'WC_ACI_Admin_Settings';
+		// Add OPP Parameter Settings for ACI - Manual Entry Tab
+		$setting_classes['opp_manual'] = 'WC_ACI_OPP_Manual_Settings';
+		// Add OPP Parameter Settings for ACI - Dropdown Entry Tab
+		$setting_classes['opp_dropdown'] = 'WC_ACI_OPP_Dropdown_Settings';
+		// Remove Ignite Custom Settings from ACI
+		unset( $setting_classes['custom_settings'] );
 		return $setting_classes;
 	}
 
@@ -221,12 +226,9 @@ class WC_Aci {
 	 * Method to load ac classes
 	 */
 	public function wc_aci_include_classes() {
-		// Check if tryzens-ignite is active.
-		if ( is_plugin_active( 'tryzens-ignite/tryzens-ignite.php' ) ) {
-			require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-ajax-aci-cc.php';
-			require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-admin-action-aci.php';
-			require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/jobs/class-wc-aci-batch-processing.php';
-		}
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-ajax-aci-cc.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/gateways/ajax/class-wc-admin-action-aci.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/jobs/class-wc-aci-batch-processing.php';
 	}
 
 	/**
@@ -326,64 +328,10 @@ class WC_Aci {
 			'before_woocommerce_init',
 			function () {
 				if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
-					\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', WC_ACI_PLUGIN_FILE_PATH . 'aci-payments.php', true );
+					\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', WC_ACI_PLUGIN_NAME, true );
 				}
 			}
 		);
-	}
-
-	/**
-	 * Callback function for register_activation_hook hook
-	 */
-	public function woo_aci_install_dependencies() {
-		$skin     = new WP_Ajax_Upgrader_Skin();
-		$upgrader = new Plugin_Upgrader( $skin );
-		$package  = $upgrader->install( 'https://bitbucket.org/tryzens-woocommerce/tryzens-ignite-release/get/v1.3.2.zip' );
-		if ( $package && ! is_wp_error( $package ) ) {
-			$plugin_to_activate = 'tryzens-ignite/tryzens-ignite.php';
-			if ( ! is_plugin_active( $plugin_to_activate ) ) {
-				include_once ABSPATH . 'wp-admin/includes/plugin.php';
-				activate_plugin( $plugin_to_activate );
-			}
-		} else {
-			exit;
-		}
-	}
-
-	/**
-	 * Callback function for upgrader_process_complete action
-	 *
-	 * @param object $upgrader upgrader object.
-	 * @param array  $hook_extra hook extra.
-	 */
-	public function woo_aci_rename_dependencies_folder( $upgrader, $hook_extra ) {
-		if ( 'plugin' === $hook_extra['type'] ) {
-			$installed_path  = $upgrader->result['destination'];
-			$old_folder_name = basename( $installed_path );
-			$new_folder_name = 'tryzens-ignite';
-			$new_path        = dirname( $installed_path ) . '/' . $new_folder_name;
-			if ( strpos( $old_folder_name, 'tryzens-ignite' ) !== false ) {
-				$filesystem = new WP_Filesystem_Direct( true );
-				$result     = copy_dir( $installed_path, $new_path );
-				$filesystem->delete( $installed_path, true );
-				if ( is_wp_error( $result ) ) {
-					exit;
-				}
-			}
-		}
-	}
-
-	/**
-	 * Callback function for register_deactivation_hook hook
-	 */
-	public function woo_aci_deactivation_dependencies() {
-		$plugin_to_remove = 'tryzens-ignite/tryzens-ignite.php';
-		if ( is_plugin_active( $plugin_to_remove ) ) {
-			deactivate_plugins( $plugin_to_remove );
-		}
-		if ( file_exists( WP_PLUGIN_DIR . '/' . $plugin_to_remove ) ) {
-			delete_plugins( array( $plugin_to_remove ) );
-		}
 	}
 
 	/**

@@ -4,9 +4,13 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit6df7052883b7e0b1b97d13fd814830b6
+class ComposerStaticInita8c13eaf17ee66a8eae827c30a48d6b0
 {
     public static $prefixLengthsPsr4 = array (
+        'I' => 
+        array (
+            'Ignite\\' => 7,
+        ),
         'A' => 
         array (
             'Aci\\' => 4,
@@ -14,6 +18,10 @@ class ComposerStaticInit6df7052883b7e0b1b97d13fd814830b6
     );
 
     public static $prefixDirsPsr4 = array (
+        'Ignite\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/ignite/packages/Ignite',
+        ),
         'Aci\\' => 
         array (
             0 => __DIR__ . '/../..' . '/aci/packages/Aci',
@@ -27,9 +35,9 @@ class ComposerStaticInit6df7052883b7e0b1b97d13fd814830b6
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit6df7052883b7e0b1b97d13fd814830b6::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit6df7052883b7e0b1b97d13fd814830b6::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit6df7052883b7e0b1b97d13fd814830b6::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInita8c13eaf17ee66a8eae827c30a48d6b0::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInita8c13eaf17ee66a8eae827c30a48d6b0::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInita8c13eaf17ee66a8eae827c30a48d6b0::$classMap;
 
         }, null, ClassLoader::class);
     }

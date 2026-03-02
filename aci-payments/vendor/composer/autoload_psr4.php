@@ -6,5 +6,6 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Ignite\\' => array($baseDir . '/ignite/packages/Ignite'),
     'Aci\\' => array($baseDir . '/aci/packages/Aci'),
 );

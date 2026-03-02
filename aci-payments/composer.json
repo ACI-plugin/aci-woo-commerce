@@ -1,9 +1,11 @@
 {
-    "name": "tryzens/aci",
-    "type": "project",
+    "name": "tryzens/aci-ignite",
+    "description": "Combined ACI and Ignite payment gateway plugin for WooCommerce",
+    "type": "wordpress-plugin",
     "autoload": {
         "psr-4": {
-            "Aci\\": "aci/packages/Aci"
+            "Aci\\": "aci/packages/Aci/",
+            "Ignite\\": "ignite/packages/Ignite/"
         }
     }
 }
