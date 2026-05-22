@@ -90,6 +90,9 @@ class WC_Ajax_Draft_Order extends WC_Checkout {
 				} else {
 					$order_controller->update_order_from_cart( $order, true );
 				}
+				if ( ! empty( $posted_data['order_comments'] ) ) {
+					$order->set_customer_note( wc_sanitize_textarea( $posted_data['order_comments'] ) );
+				}
 				/**
 				 * Action hook fired after an order is created.
 				 * This will call OOTB WC action to update order meta data.
