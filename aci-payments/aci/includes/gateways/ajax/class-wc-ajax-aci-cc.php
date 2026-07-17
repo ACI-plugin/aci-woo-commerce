@@ -137,7 +137,7 @@ class WC_Ajax_Aci_CC extends WC_Ajax_Ignite_CC {
 				'integrity'             => true,
 				'merchantTransactionId' => time() . WC()->cart->get_cart_hash(),
 			);
-			$aci_params = $gateway->prepare_aci_request( $payment_id, $cart_total_amount );
+			$aci_params = $gateway->prepare_aci_request( $payment_id, $cart_total_amount, $order_id ? $order_id : null );
 
 			$params = array_merge( $params, $aci_params );
 			if ( 'test' === $gateway->get_aci_environent() ) {

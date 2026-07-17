@@ -178,13 +178,16 @@ class WC_Aci {
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-admin-settings.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-opp-manual-settings.php';
 		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-opp-dropdown-settings.php';
+		require_once WC_ACI_PLUGIN_FILE_PATH . 'aci/includes/settings/admin/class-wc-aci-opp-custommeta-settings.php';
 		$setting_classes['api_settings']  = 'WC_ACI_General_Settings';
 		$setting_classes['admin_setting'] = 'WC_ACI_Admin_Settings';
-		// Add OPP Parameter Settings for ACI - Manual Entry Tab
+		// Add OPP Parameter Settings for ACI - Manual Entry Tab.
 		$setting_classes['opp_manual'] = 'WC_ACI_OPP_Manual_Settings';
-		// Add OPP Parameter Settings for ACI - Dropdown Entry Tab
+		// Add OPP Parameter Settings for ACI - Dropdown Entry Tab.
 		$setting_classes['opp_dropdown'] = 'WC_ACI_OPP_Dropdown_Settings';
-		// Remove Ignite Custom Settings from ACI
+		// Add OPP Parameter Settings for ACI - Custom Entry Tab.
+		$setting_classes['opp_custommeta'] = 'WC_ACI_OPP_CustomMeta_Settings';
+		// Remove Ignite Custom Settings from ACI.
 		unset( $setting_classes['custom_settings'] );
 		return $setting_classes;
 	}

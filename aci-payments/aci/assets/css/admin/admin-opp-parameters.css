@@ -6,32 +6,37 @@
 
 /* Container styling matching Ignite */
 #woocommerce_aci_opp_manual_opp_parameters_manual_container,
-#woocommerce_aci_opp_dropdown_opp_parameters_dropdown_container {
+#woocommerce_aci_opp_dropdown_opp_parameters_dropdown_container,
+#woocommerce_aci_opp_custommeta_opp_parameters_custommeta_container {
 	width: 550px;
 	position: relative;
 }
 
 @media screen and (max-width: 782px) {
 	#woocommerce_aci_opp_manual_opp_parameters_manual_container,
-	#woocommerce_aci_opp_dropdown_opp_parameters_dropdown_container {
+	#woocommerce_aci_opp_dropdown_opp_parameters_dropdown_container,
+	#woocommerce_aci_opp_custommeta_opp_parameters_custommeta_container {
 		width: 100%;
 	}
 }
 
 /* Wrappers */
 .aci-opp-manual-parameters-wrapper,
-.aci-opp-dropdown-parameters-wrapper {
+.aci-opp-dropdown-parameters-wrapper,
+.aci-opp-custommeta-parameters-wrapper {
 	position: relative;
 }
 
 .aci-opp-manual-parameters-list,
-.aci-opp-dropdown-parameters-list {
+.aci-opp-dropdown-parameters-list,
+.aci-opp-custommeta-parameters-list {
 	position: relative;
 }
 
 /* Parameter Row - Matching Ignite Custom Field exactly */
 .aci-opp-manual-parameter-row,
-.aci-opp-dropdown-parameter-row {
+.aci-opp-dropdown-parameter-row,
+.aci-opp-custommeta-parameter-row {
 	position: relative;
 	border: 1px solid #000000;
 	padding: 25px;
@@ -40,13 +45,15 @@
 
 /* Table styling inside parameter row */
 .aci-opp-manual-parameter-row .form-table,
-.aci-opp-dropdown-parameter-row .form-table {
+.aci-opp-dropdown-parameter-row .form-table,
+.aci-opp-custommeta-parameter-row .form-table {
 	margin: 0;
 	background: transparent;
 }
 
 .aci-opp-manual-parameter-row .form-table th,
-.aci-opp-dropdown-parameter-row .form-table th {
+.aci-opp-dropdown-parameter-row .form-table th,
+.aci-opp-custommeta-parameter-row .form-table th {
 	width: 150px;
 	padding: 8px 15px 8px 0;
 	vertical-align: top;
@@ -54,13 +61,15 @@
 }
 
 .aci-opp-manual-parameter-row .form-table td,
-.aci-opp-dropdown-parameter-row .form-table td {
+.aci-opp-dropdown-parameter-row .form-table td,
+.aci-opp-custommeta-parameter-row .form-table td {
 	padding: 8px 0;
 	vertical-align: middle;
 }
 
 .aci-opp-manual-parameter-row .form-table tr,
-.aci-opp-dropdown-parameter-row .form-table tr {
+.aci-opp-dropdown-parameter-row .form-table tr,
+.aci-opp-custommeta-parameter-row .form-table tr {
 	border: none;
 }
 
@@ -68,13 +77,15 @@
 .aci-opp-manual-parameter-row input[type="number"],
 .aci-opp-manual-parameter-row select,
 .aci-opp-dropdown-parameter-row input[type="text"],
-.aci-opp-dropdown-parameter-row select {
+.aci-opp-dropdown-parameter-row select,
+.aci-opp-custommeta-parameter-row input[type="text"] {
 	width: 100%;
 }
 
 /* Add Parameter Button - Matching Ignite position */
 .aci-add-opp-manual-parameter,
-.aci-add-opp-dropdown-parameter {
+.aci-add-opp-dropdown-parameter,
+.aci-add-opp-custommeta-parameter {
 	cursor: pointer;
 	position: absolute;
 	right: -25px;
@@ -88,7 +99,8 @@
 }
 
 .aci-add-opp-manual-parameter .dashicons,
-.aci-add-opp-dropdown-parameter .dashicons {
+.aci-add-opp-dropdown-parameter .dashicons,
+.aci-add-opp-custommeta-parameter .dashicons {
 	font-size: 20px;
 	width: 20px;
 	height: 20px;
@@ -96,7 +108,8 @@
 
 /* Delete Button - Matching Ignite position */
 .aci-remove-opp-manual-parameter,
-.aci-remove-opp-dropdown-parameter {
+.aci-remove-opp-dropdown-parameter,
+.aci-remove-opp-custommeta-parameter {
 	cursor: pointer;
 	position: absolute;
 	right: 4px;
@@ -111,7 +124,8 @@
 }
 
 .aci-remove-opp-manual-parameter .dashicons,
-.aci-remove-opp-dropdown-parameter .dashicons {
+.aci-remove-opp-dropdown-parameter .dashicons,
+.aci-remove-opp-custommeta-parameter .dashicons {
 	font-size: 20px;
 	width: 20px;
 	height: 20px;

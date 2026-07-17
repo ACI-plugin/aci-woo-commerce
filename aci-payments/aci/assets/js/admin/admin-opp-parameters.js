@@ -9,6 +9,7 @@
 
 	let manualRowIndex = 0;
 	let dropdownRowIndex = 0;
+	let custommetaRowIndex = 0;
 	let opp_parameter_element_to_delete = null;
 
 	/**
@@ -27,6 +28,13 @@
 			const index = parseInt($(this).data('index'));
 			if (index >= dropdownRowIndex) {
 				dropdownRowIndex = index + 1;
+			}
+		});
+
+		$('.aci-opp-custommeta-parameter-row').each(function() {
+			const index = parseInt($(this).data('index'));
+			if (index >= custommetaRowIndex) {
+				custommetaRowIndex = index + 1;
 			}
 		});
 
@@ -79,6 +87,21 @@
 			});
 		});
 
+		// Custom Field Mapping - Add parameter button
+		$(document).on('click', '.aci-add-opp-custommeta-parameter', function(e) {
+			e.preventDefault();
+			addCustommetaParameterRow();
+		});
+
+		// Custom Field Mapping - Remove parameter button
+		$(document).on('click', '.aci-remove-opp-custommeta-parameter', function(e) {
+			e.preventDefault();
+			opp_parameter_element_to_delete = $(this).closest('.aci-opp-custommeta-parameter-row');
+			$(this).WCBackboneModal({
+				template: 'wc-aci-opp-delete-modal'
+			});
+		});
+
 		// View mappings link
 		$(document).on('click', '.aci-opp-view-mappings', function(e) {
 			e.preventDefault();
@@ -86,7 +109,7 @@
 		});
 
 		// Input change event to update Save button state
-		$(document).on('input change keyup blur', '.aci-opp-param-key, .aci-opp-param-value, .aci-opp-wc-field-select, .aci-opp-random-length-input', updateSaveButtonState);
+		$(document).on('input change keyup blur', '.aci-opp-param-key, .aci-opp-param-value, .aci-opp-wc-field-select, .aci-opp-random-length-input, .aci-opp-meta-key', updateSaveButtonState);
 
 		// Initial Save button state check - use setTimeout to ensure DOM is ready
 		setTimeout(function() {
@@ -180,6 +203,25 @@
 
 				// WooCommerce field cannot be empty
 				if (wcField === '') {
+					hasEmptyFields = true;
+					return false; // Break the loop
+				}
+			});
+		}
+
+		// Check Custom Field Mapping parameters if no empty fields found yet
+		if (!hasEmptyFields) {
+			$('.aci-opp-custommeta-parameter-row').each(function() {
+				const $row = $(this);
+				const key = $.trim($row.find('.aci-opp-param-key').val());
+				const metaKey = $.trim($row.find('.aci-opp-meta-key').val());
+
+				if (key === '') {
+					hasEmptyFields = true;
+					return false; // Break the loop
+				}
+
+				if (metaKey === '') {
 					hasEmptyFields = true;
 					return false; // Break the loop
 				}
@@ -304,6 +346,56 @@
 		row.append(table);
 		row.append(deleteBtn);
 		$('.aci-opp-dropdown-parameters-list').append(row);
+		row.hide().fadeIn(300);
+
+		// Update Save button state
+		updateSaveButtonState();
+	}
+
+	/**
+	 * Add a new custom field mapping parameter row
+	 */
+	function addCustommetaParameterRow() {
+		const index = custommetaRowIndex++;
+		const fieldKey = wooAciOPPParameters.custommeta_field_key || 'woocommerce_aci_opp_custommeta_opp_parameters_custommeta';
+
+		const row = $('<div class="aci-opp-custommeta-parameter-row" data-index="' + index + '"></div>');
+		const table = $('<table class="form-table"></table>');
+
+		// OPP Parameter Key row
+		table.append(
+			'<tr valign="top">' +
+				'<th scope="row" class="titledesc">' +
+					'<label>' + wp.i18n.__( 'OPP Parameter Key', 'woocommerce' ) + '</label>' +
+				'</th>' +
+				'<td class="forminp">' +
+					'<fieldset>' +
+						'<input type="text" name="' + fieldKey + '[' + index + '][key]" class="aci-opp-param-key" style="width: 100%;" />' +
+					'</fieldset>' +
+				'</td>' +
+			'</tr>'
+		);
+
+		// WooCommerce Meta Key row
+		table.append(
+			'<tr valign="top">' +
+				'<th scope="row" class="titledesc">' +
+					'<label>' + wp.i18n.__( 'WooCommerce Meta Key', 'woocommerce' ) + '</label>' +
+				'</th>' +
+				'<td class="forminp">' +
+					'<fieldset>' +
+						'<input type="text" name="' + fieldKey + '[' + index + '][meta_key]" class="aci-opp-meta-key" style="width: 100%;" />' +
+					'</fieldset>' +
+				'</td>' +
+			'</tr>'
+		);
+
+		// Delete button
+		const deleteBtn = $('<div class="aci-remove-opp-custommeta-parameter dashicons dashicons-trash" data-index="' + index + '"></div>');
+
+		row.append(table);
+		row.append(deleteBtn);
+		$('.aci-opp-custommeta-parameters-list').append(row);
 		row.hide().fadeIn(300);
 
 		// Update Save button state

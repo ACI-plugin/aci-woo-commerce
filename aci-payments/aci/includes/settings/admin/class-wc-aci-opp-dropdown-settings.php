@@ -73,7 +73,7 @@ class WC_ACI_OPP_Dropdown_Settings extends WC_Ignite_Settings_API {
 	 * Enqueue admin scripts.
 	 */
 	public function woo_aci_admin_opp_dropdown_scripts() {
-		// Only enqueue on WooCommerce settings page
+		// Only enqueue on WooCommerce settings page.
 		$screen = get_current_screen();
 		if ( ! $screen || 'woocommerce_page_wc-settings' !== $screen->id ) {
 			return;
@@ -81,20 +81,21 @@ class WC_ACI_OPP_Dropdown_Settings extends WC_Ignite_Settings_API {
 
 		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 
-		// Enqueue CSS
+		// Enqueue CSS.
 		wp_enqueue_style( 'woo_aci_admin_opp_parameters', WC_ACI_ASSETS . 'css/admin/admin-opp-parameters.css', array(), WC_ACI_VERSION );
 
-		// Enqueue JS with WooCommerce Backbone Modal dependency
+		// Enqueue JS with WooCommerce Backbone Modal dependency.
 		wp_enqueue_script( 'woo_aci_admin_opp_parameters', WC_ACI_ASSETS . 'js/admin/admin-opp-parameters' . $suffix . '.js', array( 'jquery', 'wc-backbone-modal' ), WC_ACI_VERSION, false );
 
 		wp_localize_script(
 			'woo_aci_admin_opp_parameters',
 			'wooAciOPPParameters',
 			array(
-				'confirm_delete'     => __( 'Are you sure you want to remove this parameter?', 'woocommerce' ),
-				'woocommerce_fields' => $this->get_woocommerce_fields_list(),
-				'dropdown_field_key' => $this->get_field_key( 'opp_parameters_dropdown' ),
-				'manual_field_key'   => 'woocommerce_aci_opp_manual_opp_parameters_manual',
+				'confirm_delete'       => __( 'Are you sure you want to remove this parameter?', 'woocommerce' ),
+				'woocommerce_fields'   => self::get_woocommerce_fields_list(),
+				'dropdown_field_key'   => $this->get_field_key( 'opp_parameters_dropdown' ),
+				'manual_field_key'     => 'woocommerce_aci_opp_manual_opp_parameters_manual',
+				'custommeta_field_key' => 'woocommerce_aci_opp_custommeta_opp_parameters_custommeta',
 			)
 		);
 	}
@@ -132,7 +133,7 @@ class WC_ACI_OPP_Dropdown_Settings extends WC_Ignite_Settings_API {
 	 *
 	 * @return array List of WooCommerce fields grouped by category
 	 */
-	public function get_woocommerce_fields_list() {
+	public static function get_woocommerce_fields_list() {
 		return array(
 			'Cart Fields (Frontend Checkout Only)' => array(
 				'Cart.tax_included'        => __( 'Cart - Check if prices include tax', 'woocommerce' ),
@@ -187,7 +188,7 @@ class WC_ACI_OPP_Dropdown_Settings extends WC_Ignite_Settings_API {
 	public function generate_aci_opp_parameters_dropdown_html( $key, $data ) {
 		$field_key = $this->get_field_key( $key );
 		$value     = $this->get_option( $key, array() );
-		$wc_fields = $this->get_woocommerce_fields_list();
+		$wc_fields = self::get_woocommerce_fields_list();
 
 		ob_start();
 		?>

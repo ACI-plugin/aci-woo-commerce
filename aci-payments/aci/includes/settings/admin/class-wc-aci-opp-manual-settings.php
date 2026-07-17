@@ -73,7 +73,7 @@ class WC_ACI_OPP_Manual_Settings extends WC_Ignite_Settings_API {
 	 * Enqueue admin scripts.
 	 */
 	public function woo_aci_admin_opp_manual_scripts() {
-		// Only enqueue on WooCommerce settings page
+		// Only enqueue on WooCommerce settings page.
 		$screen = get_current_screen();
 		if ( ! $screen || 'woocommerce_page_wc-settings' !== $screen->id ) {
 			return;
@@ -81,19 +81,20 @@ class WC_ACI_OPP_Manual_Settings extends WC_Ignite_Settings_API {
 
 		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 
-		// Enqueue CSS
+		// Enqueue CSS.
 		wp_enqueue_style( 'woo_aci_admin_opp_parameters', WC_ACI_ASSETS . 'css/admin/admin-opp-parameters.css', array(), WC_ACI_VERSION );
 
-		// Enqueue JS with WooCommerce Backbone Modal dependency
+		// Enqueue JS with WooCommerce Backbone Modal dependency.
 		wp_enqueue_script( 'woo_aci_admin_opp_parameters', WC_ACI_ASSETS . 'js/admin/admin-opp-parameters' . $suffix . '.js', array( 'jquery', 'wc-backbone-modal' ), WC_ACI_VERSION, false );
 
 		wp_localize_script(
 			'woo_aci_admin_opp_parameters',
 			'wooAciOPPParameters',
 			array(
-				'confirm_delete'     => __( 'Are you sure you want to remove this parameter?', 'woocommerce' ),
-				'manual_field_key'   => $this->get_field_key( 'opp_parameters_manual' ),
-				'dropdown_field_key' => 'woocommerce_aci_opp_dropdown_opp_parameters_dropdown',
+				'confirm_delete'       => __( 'Are you sure you want to remove this parameter?', 'woocommerce' ),
+				'manual_field_key'     => $this->get_field_key( 'opp_parameters_manual' ),
+				'dropdown_field_key'   => 'woocommerce_aci_opp_dropdown_opp_parameters_dropdown',
+				'custommeta_field_key' => 'woocommerce_aci_opp_custommeta_opp_parameters_custommeta',
 			)
 		);
 	}

@@ -17,10 +17,11 @@ trait WC_Aci_Initialize_Trait {
 	 *
 	 * @param string $gateway_key The payment gateway ID.
 	 * @param string $cart_total_amount total amount.
+	 * @param int    $draft_order_id Draft order ID used for custom meta lookups.
 	 *
 	 * @return array Array of request data.
 	 */
-	public function prepare_aci_request( $gateway_key, $cart_total_amount ) {
+	public function prepare_aci_request( $gateway_key, $cart_total_amount, $draft_order_id = null ) {
 		if ( wc_get_post_data_by_key( 'admin_checkout_order_id' ) ) {
 			$order_id      = wc_get_post_data_by_key( 'admin_checkout_order_id' );
 			$order         = wc_get_order( $order_id );
@@ -33,17 +34,35 @@ trait WC_Aci_Initialize_Trait {
 			$order->set_prices_include_tax( 'yes' === get_option( 'woocommerce_prices_include_tax' ) );
 			$customer_data = WC()->customer;
 		}
-		$billing_array           = $this->get_address_data( $customer_data, $this->billing_address_prefix );
-		$shipping_array          = $this->get_address_data( $customer_data, $this->shipping_address_prefix );
-		$cart_item_array         = $this->prepare_cart_item( $order, $gateway_key, $cart_total_amount );
-		$custom_param_array      = $this->prepare_custom_parameters();
-		$opp_param_array         = $this->get_opp_parameters( $order );
+		$billing_array      = $this->get_address_data( $customer_data, $this->billing_address_prefix );
+		$shipping_array     = $this->get_address_data( $customer_data, $this->shipping_address_prefix );
+		$cart_item_array    = $this->prepare_cart_item( $order, $gateway_key, $cart_total_amount );
+		$custom_param_array = $this->prepare_custom_parameters();
+		$merchant_array     = $this->prepare_merchant_request();
+		// For custom meta lookups use the saved draft order when available; the cart-based $order has no persisted meta.
+		$meta_order = $order;
+		if ( ! empty( $draft_order_id ) && ! wc_get_post_data_by_key( 'admin_checkout_order_id' ) ) {
+			$draft_order = wc_get_order( absint( $draft_order_id ) );
+			$meta_order  = $draft_order ? $draft_order : $order;
+		}
+		$opp_param_array         = $this->get_opp_parameters( $meta_order );
 		$customer_array          = $this->prepare_customer_request( $customer_data );
 		$klarna_specific_address = array();
 		if ( $gateway_key === $this->klarna_payments ) {
 			$klarna_specific_address = $this->get_klarna_specific_address( $customer_data, $order->get_shipping_method() );
 		}
-		return $this->remove_null_value( array_merge( $billing_array, $shipping_array, $klarna_specific_address, $cart_item_array, $custom_param_array, $opp_param_array, $customer_array ) );
+		return $this->remove_null_value( array_merge( $billing_array, $shipping_array, $klarna_specific_address, $cart_item_array, $custom_param_array, $opp_param_array, $customer_array, $merchant_array ) );
+	}
+
+	/**
+	 * Prepare merchant request data.
+	 *
+	 * @return array Array of merchant data.
+	 */
+	public function prepare_merchant_request() {
+		return array(
+			'merchant.url' => home_url(),
+		);
 	}
 
 	/**
@@ -254,6 +273,53 @@ trait WC_Aci_Initialize_Trait {
 				$value = $this->get_woocommerce_field_value( $field_path, $order );
 				if ( null !== $value && '' !== $value ) {
 					$opp_params[ $key ] = $value;
+				}
+			}
+		}
+
+		// Get custom meta entry parameters (merchant-provided order/line-item meta keys).
+		$custommeta_settings = get_option( 'woocommerce_aci_opp_custommeta_settings', array() );
+		$custommeta_params   = isset( $custommeta_settings['opp_parameters_custommeta'] ) ? $custommeta_settings['opp_parameters_custommeta'] : array();
+
+		if ( is_array( $custommeta_params ) && ! empty( $custommeta_params ) && $order instanceof WC_Order ) {
+			foreach ( $custommeta_params as $param ) {
+				if ( empty( $param['key'] ) || empty( $param['meta_key'] ) ) {
+					continue;
+				}
+
+				$opp_key  = $param['key'];
+				$meta_key = $param['meta_key'];
+				$sub_key  = null;
+
+				// Support dot notation for nested array meta.
+				if ( strpos( $meta_key, '.' ) !== false ) {
+					$parts    = explode( '.', $meta_key, 2 );
+					$meta_key = $parts[0];
+					$sub_key  = $parts[1];
+				}
+
+				// Try order meta first.
+				$raw_value = $order->get_meta( $meta_key );
+				$value     = ( null !== $sub_key && is_array( $raw_value ) )
+					? ( isset( $raw_value[ $sub_key ] ) ? $raw_value[ $sub_key ] : null )
+					: $raw_value;
+
+				// Fall back to the first matching product line item meta.
+				if ( '' === $value || false === $value || null === $value ) {
+					foreach ( $order->get_items() as $item ) {
+						$raw_item   = $item->get_meta( $meta_key );
+						$item_value = ( null !== $sub_key && is_array( $raw_item ) )
+							? ( isset( $raw_item[ $sub_key ] ) ? $raw_item[ $sub_key ] : null )
+							: $raw_item;
+						if ( '' !== $item_value && false !== $item_value && null !== $item_value ) {
+							$value = $item_value;
+							break;
+						}
+					}
+				}
+
+				if ( '' !== $value && false !== $value && null !== $value ) {
+					$opp_params[ $opp_key ] = $value;
 				}
 			}
 		}

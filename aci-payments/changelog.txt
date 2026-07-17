@@ -29,3 +29,6 @@
 * Added - Custom OPP parameters.
 2026-04-23 - version 1.2.6
 * Fixed - Customer order note.
+2026-07-07 - version 1.2.7
+* Added - Merchant URL sent to initialization API.
+* Added - Custom OPP Parameter config for Order Meta Data.
